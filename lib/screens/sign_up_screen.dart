@@ -20,6 +20,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _isLoading = false;
 
   Future<void> _registerUser() async {
+    if (!_formKey.currentState!.validate()) return;
+
     setState(() {
       _isLoading = true;
     });
@@ -46,12 +48,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     if (response.statusCode == 201) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(responseData['message'], style: TextStyle(color: Colors.white)), backgroundColor: Colors.green),
+        SnackBar(
+          content: Text(responseData['message'] ?? 'Registered successfully', style: TextStyle(color: Colors.white)),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
       );
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => SignInScreen()));
+      await Future.delayed(Duration(seconds: 2));
+      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => SignInScreen()));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(responseData['message'], style: TextStyle(color: Colors.white)), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(responseData['message'] ?? 'Registration failed', style: TextStyle(color: Colors.white)),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
       );
     }
   }

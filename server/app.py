@@ -160,7 +160,7 @@ def signin():
         return jsonify({'success': False, 'message': 'Server error'}), 500
 if __name__ == '__main__':
     app.run(
-        host='192.168.10.18',
+        host='192.168.100.104',
         port=5000,
         debug=True
     )

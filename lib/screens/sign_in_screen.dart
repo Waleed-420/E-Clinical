@@ -1,4 +1,7 @@
 import 'package:e_clinical/screens/sign_up_screen.dart';
+import 'package:e_clinical/screens/user_home_page.dart';
+import 'package:e_clinical/screens/doctor_home_page.dart';
+import 'package:e_clinical/screens/laboratory_home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -30,11 +33,31 @@ class _SignInScreenState extends State<SignInScreen> {
       final result = jsonDecode(response.body);
 
       if (response.statusCode == 200 && result["success"] == true) {
+        final user = result["user"];
+        final String role = (user['role'] ?? 'General User').toString().toLowerCase();
+
+        print("User Role: $role"); // Debug log
+
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text("Login Successful!"),
           backgroundColor: Colors.green,
         ));
-        // Navigate to dashboard or home here
+
+        Widget home;
+        if (role == 'Doctor') {
+          home = DoctorHomePage(user: user);
+        } else if (role == 'Laboratory') {
+          home = LaboratoryHomePage(user: user);
+        } else {
+          home = UserHomePage(user: user);
+        }
+
+        Future.delayed(Duration(milliseconds: 500), () {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => home),
+          );
+        });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(result['message'] ?? "Login failed"),
@@ -60,9 +83,7 @@ class _SignInScreenState extends State<SignInScreen> {
           builder: (context, constraints) {
             return SingleChildScrollView(
               child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight,
-                ),
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
                 child: Column(
                   children: [
                     Stack(
@@ -119,10 +140,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                       onPressed: () {
                                         // Forgot password action
                                       },
-                                      child: Text(
-                                        'Forgot Password?',
-                                        style: TextStyle(color: Color(0xFF15A196)),
-                                      ),
+                                      child: Text('Forgot Password?', style: TextStyle(color: Color(0xFF15A196))),
                                     ),
                                   ],
                                 ),
@@ -137,17 +155,13 @@ class _SignInScreenState extends State<SignInScreen> {
                                             }
                                           },
                                     child: _isLoading
-                                        ? CircularProgressIndicator(
-                                            color: Colors.white,
-                                          )
+                                        ? CircularProgressIndicator(color: Colors.white)
                                         : const Text('Sign In'),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color(0xFF15A196),
                                       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
                                       foregroundColor: Colors.white,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                     ),
                                   ),
                                 ),
@@ -179,10 +193,7 @@ class _SignInScreenState extends State<SignInScreen> {
                           child: Container(
                             height: 250,
                             width: 250,
-                            child: Image.asset(
-                              'assets/images/doctor_top.png',
-                              fit: BoxFit.contain,
-                            ),
+                            child: Image.asset('assets/images/doctor_top.png', fit: BoxFit.contain),
                           ),
                         ),
                       ],
