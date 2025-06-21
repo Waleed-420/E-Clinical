@@ -44,9 +44,9 @@ class _SignInScreenState extends State<SignInScreen> {
         ));
 
         Widget home;
-        if (role == 'Doctor') {
+        if (role == 'doctor') {
           home = DoctorHomePage(user: user);
-        } else if (role == 'Laboratory') {
+        } else if (role == 'laboratory') {
           home = LaboratoryHomePage(user: user);
         } else {
           home = UserHomePage(user: user);

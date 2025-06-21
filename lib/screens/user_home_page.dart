@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import './book_appointment.dart';
 
 class UserHomePage extends StatelessWidget {
   final Map<String, dynamic> user;
@@ -106,7 +107,14 @@ class UserHomePage extends StatelessWidget {
                       Icons.calendar_today,
                       'Book Appointment',
                       colorScheme.secondary,
-                      () => _navigateTo(context, '/book-appointment'),
+                      () {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => BookAppointmentScreen(user: user),
+    ),
+  );
+},
                     ),
                     _buildActionCard(
                       context,
