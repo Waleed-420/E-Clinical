@@ -1,22 +1,27 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:table_calendar/table_calendar.dart';
+// import 'package:table_calendar/table_calendar.dart';
 import 'package:time_range/time_range.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'doctor_home_page.dart';
 
+// ignore: must_be_immutable
 class DoctorScheduleSetup extends StatefulWidget {
   final Map<String, dynamic> user;
   final String specialization;
+  String name;
 
-  const DoctorScheduleSetup({
-    Key? key,
+  DoctorScheduleSetup({
+    super.key,
     required this.user,
     required this.specialization,
-  }) : super(key: key);
+    this.name = 'Doctor'
+  });
 
   @override
+  // ignore: library_private_types_in_public_api
   _DoctorScheduleSetupState createState() => _DoctorScheduleSetupState();
 }
 
@@ -97,10 +102,11 @@ class _DoctorScheduleSetupState extends State<DoctorScheduleSetup> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.10.18:5000/api/doctor/schedule'),
+        Uri.parse('http://192.168.1.4:5000/api/doctor/schedule'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'doctorId': widget.user['_id'].toString(),
+          'name': widget.name,
           'specialization': widget.specialization,
           'schedule': _weeklySchedule.map((key, value) => MapEntry(
                 key.toString(),
@@ -118,17 +124,20 @@ class _DoctorScheduleSetupState extends State<DoctorScheduleSetup> {
 
       if (response.statusCode == 200 && result['success']) {
         Navigator.pushReplacement(
+          // ignore: use_build_context_synchronously
           context,
           MaterialPageRoute(
             builder: (context) => DoctorHomePage(user: widget.user),
           ),
         );
       } else {
+        // ignore: use_build_context_synchronously
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(result['message'] ?? 'Failed to save schedule')),
         );
       }
     } catch (e) {
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: ${e.toString()}')),
       );
@@ -137,6 +146,64 @@ class _DoctorScheduleSetupState extends State<DoctorScheduleSetup> {
         _isSubmitting = false;
       });
     }
+  }
+
+  Future<void> fetchDoctorSchedule() async {
+    final doctorId = widget.user['_id'];
+    final url = Uri.parse('http://192.168.1.4:5000/api/doctor/$doctorId/schedule');
+
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final schedule = data['schedule'] as Map<String, dynamic>;
+
+        Map<int, List<TimeRangeResult>> tempSchedule = {};
+
+        schedule.forEach((day, slots) {
+          final intDay = int.tryParse(day);
+          if (intDay == null) return;
+
+          final List<TimeRangeResult> timeSlots = [];
+          for (var slot in slots) {
+            final startParts = slot['start'].split(':');
+            final endParts = slot['end'].split(':');
+
+            final start = TimeOfDay(
+              hour: int.parse(startParts[0]),
+              minute: int.parse(startParts[1]),
+            );
+            final end = TimeOfDay(
+              hour: int.parse(endParts[0]),
+              minute: int.parse(endParts[1]),
+            );
+
+            timeSlots.add(TimeRangeResult(start, end));
+          }
+
+          tempSchedule[intDay] = timeSlots;
+        });
+
+        setState(() {
+          _weeklySchedule.clear();
+          _weeklySchedule.addAll(tempSchedule);
+        });
+      } else {
+        if (kDebugMode) {
+          print('Failed to fetch schedule: ${response.statusCode}');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching schedule: $e');
+      }
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fetchDoctorSchedule();
   }
 
   @override

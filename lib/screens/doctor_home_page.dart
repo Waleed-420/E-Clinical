@@ -1,3 +1,4 @@
+import 'package:e_clinical/screens/user_appointments.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -9,9 +10,10 @@ import 'doctor_specialization.dart';
 class DoctorHomePage extends StatefulWidget {
   final Map<String, dynamic> user;
 
-  const DoctorHomePage({Key? key, required this.user}) : super(key: key);
+  const DoctorHomePage({super.key, required this.user});
 
   @override
+  // ignore: library_private_types_in_public_api
   _DoctorHomePageState createState() => _DoctorHomePageState();
 }
 
@@ -25,6 +27,7 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
   void initState() {
     super.initState();
     _loadData();
+    _fetchDoctorData();
   }
 
   Future<void> _loadData() async {
@@ -50,7 +53,7 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
   Future<void> _fetchDoctorData() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.10.18:5000/api/doctors?doctorId=${widget.user['_id']}'),
+        Uri.parse('http://192.168.1.4:5000/api/doctors?doctorId=${widget.user['_id']}'),
       );
 
       if (response.statusCode == 200) {
@@ -67,7 +70,7 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
   Future<void> _fetchUpcomingAppointments() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.10.18:5000/api/appointments?doctorId=${widget.user['_id']}&status=booked'),
+        Uri.parse('http://192.168.1.4:5000/api/appointments?doctorId=${widget.user['_id']}&status=booked'),
       );
 
       if (response.statusCode == 200) {
@@ -83,6 +86,7 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final name = _doctorDetails?['name'] ?? 'Doctor';
     final specialization = _doctorDetails?['specialization'] ?? 'Not specified';
     final isVerified = _doctorDetails?['verified'] ?? false;
 
@@ -217,6 +221,7 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
                             MaterialPageRoute(
                               builder: (context) => DoctorScheduleSetup(
                                 user: widget.user,
+                                name: name,
                                 specialization: specialization,
                               ),
                             ),
@@ -232,9 +237,9 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => DoctorDetailScreen(
+                              builder: (context) => UserAppointments(
                                 user: widget.user,
-                                doctor: _doctorDetails ?? widget.user,
+                                // doctor: _doctorDetails ?? widget.user,
                               ),
                             ),
                           );

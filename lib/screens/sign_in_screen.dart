@@ -2,12 +2,16 @@ import 'package:e_clinical/screens/sign_up_screen.dart';
 import 'package:e_clinical/screens/user_home_page.dart';
 import 'package:e_clinical/screens/doctor_home_page.dart';
 import 'package:e_clinical/screens/laboratory_home_page.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class SignInScreen extends StatefulWidget {
+  const SignInScreen({super.key});
+
   @override
+  // ignore: library_private_types_in_public_api
   _SignInScreenState createState() => _SignInScreenState();
 }
 
@@ -22,7 +26,7 @@ class _SignInScreenState extends State<SignInScreen> {
     setState(() => _isLoading = true);
     try {
       final response = await http.post(
-        Uri.parse("http://192.168.10.18:5000/api/signin"),
+        Uri.parse("http://192.168.1.4:5000/api/signin"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": _emailController.text.trim(),
@@ -36,8 +40,11 @@ class _SignInScreenState extends State<SignInScreen> {
         final user = result["user"];
         final String role = (user['role'] ?? 'General User').toString().toLowerCase();
 
-        print("User Role: $role"); // Debug log
+        if (kDebugMode) {
+          print("User Role: $role");
+        } // Debug log
 
+        // ignore: use_build_context_synchronously
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text("Login Successful!"),
           backgroundColor: Colors.green,
@@ -54,17 +61,20 @@ class _SignInScreenState extends State<SignInScreen> {
 
         Future.delayed(Duration(milliseconds: 500), () {
           Navigator.pushReplacement(
+            // ignore: use_build_context_synchronously
             context,
             MaterialPageRoute(builder: (context) => home),
           );
         });
       } else {
+        // ignore: use_build_context_synchronously
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(result['message'] ?? "Login failed"),
           backgroundColor: Colors.red,
         ));
       }
     } catch (e) {
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text("Error connecting to server."),
         backgroundColor: Colors.red,
@@ -154,15 +164,15 @@ class _SignInScreenState extends State<SignInScreen> {
                                               _signIn();
                                             }
                                           },
-                                    child: _isLoading
-                                        ? CircularProgressIndicator(color: Colors.white)
-                                        : const Text('Sign In'),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color(0xFF15A196),
                                       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
                                       foregroundColor: Colors.white,
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                     ),
+                                    child: _isLoading
+                                        ? CircularProgressIndicator(color: Colors.white)
+                                        : const Text('Sign In'),
                                   ),
                                 ),
                                 const SizedBox(height: 20),
@@ -190,7 +200,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         ),
                         Positioned(
                           top: 0,
-                          child: Container(
+                          child: SizedBox(
                             height: 250,
                             width: 250,
                             child: Image.asset('assets/images/doctor_top.png', fit: BoxFit.contain),

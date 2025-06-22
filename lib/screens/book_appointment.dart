@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-
 import './doctor_detail.dart';
 
 class BookAppointmentScreen extends StatefulWidget {
   final Map<String, dynamic> user;
 
-  const BookAppointmentScreen({Key? key, required this.user}) : super(key: key);
+  const BookAppointmentScreen({super.key, required this.user});
 
   @override
+  // ignore: library_private_types_in_public_api
   _BookAppointmentScreenState createState() => _BookAppointmentScreenState();
 }
 
@@ -39,20 +39,28 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _doctors = [];
     });
 
     try {
-      final uri = Uri.parse('http://192.168.10.18:5000/api/doctors?specialization=$_selectedSpecialization');
+      final uri = Uri.parse(
+          'http://192.168.1.4:5000/api/doctors?specialization=${Uri.encodeComponent(_selectedSpecialization!)}');
       final response = await http.get(uri);
-      final result = json.decode(response.body);
 
-      if (response.statusCode == 200 && result['success']) {
-        setState(() {
-          _doctors = result['doctors'];
-        });
+      if (response.statusCode == 200) {
+        final result = json.decode(response.body);
+        if (result['success']) {
+          setState(() {
+            _doctors = result['doctors'];
+          });
+        } else {
+          setState(() {
+            _errorMessage = result['message'] ?? 'Failed to load doctors';
+          });
+        }
       } else {
         setState(() {
-          _errorMessage = result['message'] ?? 'Failed to load doctors';
+          _errorMessage = 'Server error: ${response.statusCode}';
         });
       }
     } catch (e) {
@@ -100,24 +108,30 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
               onChanged: (value) {
                 setState(() {
                   _selectedSpecialization = value;
-                  _doctors = [];
                 });
                 _fetchDoctors();
               },
             ),
             const SizedBox(height: 24),
             if (_isLoading)
-              const Center(child: CircularProgressIndicator())
+              const Expanded(
+                child: Center(child: CircularProgressIndicator()),
+              )
             else if (_errorMessage != null)
-              Center(
-                child: Text(
-                  _errorMessage!,
-                  style: const TextStyle(color: Colors.red),
+              Expanded(
+                child: Center(
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               )
             else if (_doctors.isEmpty && _selectedSpecialization != null)
-              const Center(
-                child: Text('No doctors found for this specialization'),
+              const Expanded(
+                child: Center(
+                  child: Text('No doctors found with available schedule.'),
+                ),
               )
             else
               Expanded(
@@ -135,14 +149,13 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                         subtitle: Text(doctor['specialization'] ?? ''),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () {
-                          // TODO: Replace Placeholder with actual DoctorDetailScreen
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => DoctorDetailScreen(
-                                 user: widget.user,
-                                 doctor: doctor,
-                               ),
+                                user: widget.user,
+                                doctor: doctor,
+                              ),
                             ),
                           );
                         },

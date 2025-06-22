@@ -4,7 +4,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class SignUpScreen extends StatefulWidget {
+  const SignUpScreen({super.key});
+
   @override
+  // ignore: library_private_types_in_public_api
   _SignUpScreenState createState() => _SignUpScreenState();
 }
 
@@ -27,7 +30,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
 
     final response = await http.post(
-      Uri.parse('http://192.168.10.18:5000/api/signup'),
+      Uri.parse('http://192.168.1.4:5000/api/signup'),
       headers: {'Content-Type': 'application/json'},
       body: json.encode({
         'name': _nameController.text.trim(),
@@ -47,6 +50,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final responseData = json.decode(response.body);
 
     if (response.statusCode == 201) {
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(responseData['message'] ?? 'Registered successfully', style: TextStyle(color: Colors.white)),
@@ -55,8 +59,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
       );
       await Future.delayed(Duration(seconds: 2));
+      // ignore: use_build_context_synchronously
       Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => SignInScreen()));
     } else {
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(responseData['message'] ?? 'Registration failed', style: TextStyle(color: Colors.white)),
@@ -135,9 +141,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                               _registerUser();
                                             }
                                           },
-                                    child: _isLoading
-                                        ? CircularProgressIndicator(color: Colors.white)
-                                        : const Text('Register'),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color(0xFF15A196),
                                       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
@@ -146,6 +149,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                     ),
+                                    child: _isLoading
+                                        ? CircularProgressIndicator(color: Colors.white)
+                                        : const Text('Register'),
                                   ),
                                 ),
                                 const SizedBox(height: 10),
@@ -168,7 +174,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                         Positioned(
                           top: 0,
-                          child: Container(
+                          child: SizedBox(
                             height: 300,
                             width: 300,
                             child: Image.asset('assets/images/doctor_top.png', fit: BoxFit.contain),

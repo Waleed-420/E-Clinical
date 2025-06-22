@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class LaboratoryHomePage extends StatelessWidget {
   final Map user;
 
-  LaboratoryHomePage({required this.user});
+  const LaboratoryHomePage({super.key, required this.user});
 
   @override
   Widget build(BuildContext context) {

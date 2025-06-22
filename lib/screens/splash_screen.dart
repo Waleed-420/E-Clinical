@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
 
 class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
   @override
+  // ignore: library_private_types_in_public_api
   _SplashScreenState createState() => _SplashScreenState();
 }
 
@@ -40,6 +43,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Navigate after 3 seconds
     Future.delayed(const Duration(seconds: 3), () {
+      // ignore: use_build_context_synchronously
       Navigator.pushReplacementNamed(context, '/signin');
     });
   }

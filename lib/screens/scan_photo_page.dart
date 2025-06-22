@@ -8,9 +8,10 @@ import 'package:http_parser/http_parser.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ScanPhotoPage extends StatefulWidget {
-  const ScanPhotoPage({Key? key}) : super(key: key);
+  const ScanPhotoPage({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _ScanPhotoPageState createState() => _ScanPhotoPageState();
 }
 
@@ -33,6 +34,7 @@ class _ScanPhotoPageState extends State<ScanPhotoPage> {
         });
       }
     } catch (e) {
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to pick image: $e')),
       );
@@ -48,7 +50,7 @@ class _ScanPhotoPageState extends State<ScanPhotoPage> {
     });
 
     try {
-      final uri = Uri.parse('http://192.168.10.18:5000/api/scan-medical-report');
+      final uri = Uri.parse('http://192.168.1.4:5000/api/scan-medical-report');
       final request = http.MultipartRequest('POST', uri);
 
       if (kIsWeb) {
@@ -88,6 +90,7 @@ class _ScanPhotoPageState extends State<ScanPhotoPage> {
         throw Exception('Server responded with ${response.statusCode}');
       }
     } catch (e) {
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error scanning document: $e')),
       );
@@ -184,12 +187,12 @@ class _ScanPhotoPageState extends State<ScanPhotoPage> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: (_image == null && _imageBytes == null) || _isLoading ? null : _scanDocument,
-              child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Scan Document'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: colorScheme.primary,
                 foregroundColor: colorScheme.onPrimary,
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
+              child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Scan Document'),
             ),
             const SizedBox(height: 20),
             if (_scanResult != null)

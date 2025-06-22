@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_pymongo import PyMongo
 from bson.objectid import ObjectId
-from datetime import datetime
+from datetime import datetime, timedelta
 import bcrypt
 from flask_cors import CORS
 import re
@@ -11,7 +11,8 @@ import pytesseract
 from PIL import Image
 from pdf2image import convert_from_bytes
 import io
-
+from apscheduler.schedulers.background import BackgroundScheduler
+import pytz
 
 
 app = Flask(__name__)
@@ -336,6 +337,7 @@ def upload_license():
 def save_doctor_schedule():
     data = request.get_json()
     doctor_id = data.get('doctorId')
+    name = data.get('name')
     specialization = data.get('specialization')
     schedule = data.get('schedule')
 
@@ -343,8 +345,9 @@ def save_doctor_schedule():
     mongo.db.doctors.update_one(
         {'_id': ObjectId(doctor_id)},
         {'$set': {
-            'specialization': specialization,
+            'name': name,
             'schedule': schedule,
+            'specialization': specialization,
             'verified': True,
             'updated_at': datetime.utcnow()
         }},
@@ -373,7 +376,7 @@ def get_doctors():
     
     return jsonify({'success': True, 'doctors': doctors})
 
-@app.route('/api/doctor/<doctor_id>/slots', methods=['GET'])
+@app.route('/api/doctor/<doctor_id>/specialization/slots', methods=['GET'])
 def get_available_slots(doctor_id):
     try:
         # Validate date parameter
@@ -416,7 +419,12 @@ def get_available_slots(doctor_id):
                 while current_time < end_time:
                     slot_str = current_time.strftime('%H:%M')
                     if not any(appt['time'] == slot_str for appt in booked_appointments):
-                        available_slots.append(slot_str)
+                        available_slots.append({
+    'start': slot['start'],
+    'end': slot['end'],
+    'available': slot_str not in booked_times
+})
+
                     current_time = (datetime.combine(date, current_time) + timedelta(minutes=30)).time()
             except Exception as e:
                 app.logger.error(f"Error processing slot: {str(e)}")
@@ -448,14 +456,14 @@ def book_appointment():
         
         # Validate required fields
         required_fields = ['userId', 'doctorId', 'date', 'time']
-        missing_fields = [field for field in required_fields if field not in data]
+        missing_fields = [field for field in required_fields if field not in data or not data[field]]
         if missing_fields:
             return jsonify({
                 'success': False,
-                'message': f'Missing required fields: {", ".join(missing_fields)}'
+                'message': f'Missing required fields: {', '.join(missing_fields)}'
             }), 400
 
-        # Validate doctor exists
+        # Validate doctor
         if not ObjectId.is_valid(data['doctorId']):
             return jsonify({'success': False, 'message': 'Invalid doctor ID format'}), 400
 
@@ -463,37 +471,35 @@ def book_appointment():
         if not doctor:
             return jsonify({'success': False, 'message': 'Doctor not found'}), 404
 
-        # Validate date format
+        # Validate date
         try:
             datetime.strptime(data['date'], '%Y-%m-%d')
         except ValueError:
             return jsonify({'success': False, 'message': 'Invalid date format. Use YYYY-MM-DD'}), 400
 
-        # Check if slot is available
-        existing_appointment = mongo.db.appointments.find_one({
+        # Check if slot is already booked
+        already_booked = mongo.db.appointments.find_one({
             'doctorId': data['doctorId'],
             'date': data['date'],
             'time': data['time'],
             'status': {'$in': ['booked', 'confirmed']}
         })
-        
-        if existing_appointment:
-            return jsonify({
-                'success': False,
-                'message': 'This time slot is already booked'
-            }), 400
+        if already_booked:
+            return jsonify({'success': False, 'message': 'This time slot is already booked'}), 400
 
         # Create appointment
         appointment = {
             'userId': data['userId'],
             'doctorId': data['doctorId'],
+            'doctorName': doctor.get('name'),
             'date': data['date'],
             'time': data['time'],
+            'payment': data.get('payment', None),  # Optional
             'status': 'booked',
             'created_at': datetime.utcnow(),
             'updated_at': datetime.utcnow()
         }
-        
+
         result = mongo.db.appointments.insert_one(appointment)
         appointment['_id'] = str(result.inserted_id)
 
@@ -501,7 +507,7 @@ def book_appointment():
             'success': True,
             'message': 'Appointment booked successfully',
             'appointment': appointment
-        })
+        }), 201
 
     except Exception as e:
         app.logger.error(f"Error in book_appointment: {str(e)}\n{traceback.format_exc()}")
@@ -510,39 +516,213 @@ def book_appointment():
             'message': 'An error occurred while booking appointment',
             'error': str(e)
         }), 500
-    data = request.get_json()
-    
-    required_fields = ['userId', 'doctorId', 'date', 'time']
-    missing_fields = [field for field in required_fields if field not in data]
-    if missing_fields:
-        return jsonify({
-            'success': False,
-            'message': f'Missing required fields: {", ".join(missing_fields)}'
-        }), 400
-    
-    appointment = {
-        'userId': data['userId'],
-        'doctorId': data['doctorId'],
-        'date': data['date'],
-        'time': data['time'],
-        'status': 'booked',
-        'created_at': datetime.utcnow(),
-        'updated_at': datetime.utcnow()
-    }
-    
-    result = mongo.db.appointments.insert_one(appointment)
-    appointment['_id'] = str(result.inserted_id)
-    
-    # TODO: Send notifications to doctor and patient
-    
+
+# new branch
+@app.route('/api/doctor/<doctor_id>/specialization', methods=['GET'])
+def get_doctor_specialization(doctor_id):
+    if not ObjectId.is_valid(doctor_id):
+        return jsonify({'success': False, 'message': 'Invalid doctor ID'}), 400
+
+    doctor = mongo.db.doctors.find_one(
+        {'_id': ObjectId(doctor_id)},
+        {'specialization': 1}
+    )
+
+    if not doctor:
+        return jsonify({'success': False, 'message': 'Doctor not found'}), 404
+
     return jsonify({
         'success': True,
-        'message': 'Appointment booked successfully',
-        'appointment': appointment
+        'specialization': doctor.get('specialization', None)
+    }), 200
+
+@app.route('/api/doctor/<doctor_id>/schedule', methods=['GET'])
+def get_doctor_schedule(doctor_id):
+    if not ObjectId.is_valid(doctor_id):
+        return jsonify({'success': False, 'message': 'Invalid doctor ID'}), 400
+
+    doctor = mongo.db.doctors.find_one({'_id': ObjectId(doctor_id)}, {'schedule': 1})
+    if not doctor:
+        return jsonify({'success': False, 'message': 'Doctor not found'}), 404
+
+    return jsonify({'success': True, 'schedule': doctor.get('schedule', {})}), 200
+
+@app.route('/api/doctor/<doctor_id>/specialization', methods=['POST'])
+def update_doctor_specialization(doctor_id):
+    if not ObjectId.is_valid(doctor_id):
+        return jsonify({'success': False, 'message': 'Invalid doctor ID'}), 400
+
+    data = request.get_json()
+    specialization = data.get('specialization')
+    
+    if not specialization:
+        return jsonify({'success': False, 'message': 'Specialization is required'}), 400
+
+    # Update in users collection (primary)
+    mongo.db.users.update_one(
+        {'_id': ObjectId(doctor_id), 'role': 'Doctor'},
+        {'$set': {
+            'specialization': specialization,
+            'updated_at': datetime.utcnow()
+        }}
+    )
+
+    # Also ensure it's updated in doctors collection if exists
+    mongo.db.doctors.update_one(
+        {'_id': ObjectId(doctor_id)},
+        {'$set': {
+            'specialization': specialization,
+            'updated_at': datetime.utcnow()
+        }},
+        upsert=True
+    )
+
+    return jsonify({'success': True, 'message': 'Specialization updated'}), 200
+
+@app.route('/api/doctor/<doctor_id>/slots', methods=['GET'])
+
+def get_doctor_slots(doctor_id):
+    try:
+        date_str = request.args.get('date')
+        if not date_str:
+            return jsonify({'success': False, 'message': 'Date parameter is required'}), 400
+
+        try:
+            date = datetime.strptime(date_str, '%Y-%m-%d')
+        except ValueError:
+            return jsonify({'success': False, 'message': 'Invalid date format. Use YYYY-MM-DD'}), 400
+
+        weekday = str(date.isoweekday())
+
+        if not ObjectId.is_valid(doctor_id):
+            return jsonify({'success': False, 'message': 'Invalid doctor ID'}), 400
+
+        doctor = mongo.db.doctors.find_one({'_id': ObjectId(doctor_id)})
+        if not doctor:
+            return jsonify({'success': False, 'message': 'Doctor not found'}), 404
+
+        booked = list(mongo.db.appointments.find({
+            'doctorId': doctor_id,
+            'date': date_str,
+            'status': {'$in': ['booked', 'confirmed']}
+        }))
+
+        booked_times = {appt.get('time') for appt in booked if appt.get('time')}
+
+        schedule = doctor.get('schedule', {}).get(weekday, [])
+        if not isinstance(schedule, list):
+            return jsonify({'success': False, 'message': 'Invalid schedule format'}), 500
+
+        slot_ranges = []
+
+        for slot in schedule:
+            try:
+                start_time = datetime.strptime(slot['start'], '%H:%M').time()
+                end_time = datetime.strptime(slot['end'], '%H:%M').time()
+            except (KeyError, ValueError):
+                continue
+
+            current = datetime.combine(date, start_time)
+            end = datetime.combine(date, end_time)
+
+            available_times = []
+            while current < end:
+                slot_str = current.strftime('%H:%M')
+                if slot_str not in booked_times:
+                    available_times.append({'time': slot_str})
+                current += timedelta(minutes=30)
+
+            if available_times:
+                slot_ranges.append({
+                    'start': slot.get('start'),
+                    'end': slot.get('end'),
+                    'slots': available_times
+                })
+
+        return jsonify({
+            'success': True,
+            'date': date_str,
+            'slots': slot_ranges
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': 'Internal server error',
+            'error': str(e)
+        }), 500
+
+@app.route('/api/user/<user_id>/appointments', methods=['GET'])
+def get_user_appointments(user_id):
+    if not ObjectId.is_valid(user_id):
+        return jsonify({'success': False, 'message': 'Invalid user ID'}), 400
+
+    user = mongo.db.users.find_one({'_id': ObjectId(user_id)})
+    if not user:
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+
+    role = user.get('role')
+    if role == 'General User':
+        appointments = list(mongo.db.appointments.find({'userId': user_id}))
+        for appt in appointments:
+            doctor = mongo.db.doctors.find_one({'_id': ObjectId(appt['doctorId'])})
+            appt['otherName'] = doctor.get('name') if doctor else 'Unknown Doctor'
+    elif role == 'Doctor':
+        appointments = list(mongo.db.appointments.find({'doctorId': user_id}))
+        for appt in appointments:
+            patient = mongo.db.users.find_one({'_id': ObjectId(appt['userId'])})
+            appt['otherName'] = patient.get('name') if patient else 'Unknown Patient'
+    else:
+        appointments = []
+
+    for appt in appointments:
+        appt['_id'] = str(appt['_id'])
+
+    return jsonify({'success': True, 'appointments': appointments}), 200
+
+from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import datetime, timedelta
+import pytz
+
+def check_upcoming_appointments():
+    now = datetime.utcnow().replace(tzinfo=pytz.utc)
+    five_mins_later = now + timedelta(minutes=24)
+    today_str = now.strftime('%Y-%m-%d')
+
+    upcoming = mongo.db.appointments.find({
+        'date': today_str,
+        'status': {'$in': ['booked', 'confirmed']}
     })
+
+    for appt in upcoming:
+        appt_time = datetime.strptime(f"{appt['date']} {appt['time']}", "%Y-%m-%d %H:%M")
+        appt_time = appt_time.replace(tzinfo=pytz.utc)
+
+        if now <= appt_time <= five_mins_later:
+            send_notification(appt)
+
+def send_notification(appt):
+    user = mongo.db.users.find_one({'_id': ObjectId(appt['userId'])})
+    doctor = mongo.db.doctors.find_one({'_id': ObjectId(appt['doctorId'])})
+    
+    user_msg = f"Reminder: Your appointment with Dr. {doctor.get('name')} is at {appt['time']}."
+    doctor_msg = f"Reminder: You have an appointment with {user.get('name')} at {appt['time']}."
+
+    # Replace with actual push/email/sms service
+    print("Notify User:", user_msg)
+    print("Notify Doctor:", doctor_msg)
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(check_upcoming_appointments, 'interval', minutes=1)
+scheduler.start()
+
+
+
+
+
 if __name__ == '__main__':
     app.run(
-        host='192.168.10.18',
+        host='192.168.1.4',
         port=5000,
         debug=True
     )

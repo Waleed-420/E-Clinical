@@ -1,10 +1,18 @@
+import 'package:e_clinical/screens/scan_photo_page.dart';
+import 'package:e_clinical/screens/user_prescription_screen.dart';
 import 'package:flutter/material.dart';
 import './book_appointment.dart';
+import './user_reports.dart';
+import './user_appointments.dart';
+import './user_settings.dart';
+import './upload_pdf_screen.dart';
+import './book_test_screen.dart';
+import './past_reports_screen.dart';
 
 class UserHomePage extends StatelessWidget {
   final Map<String, dynamic> user;
 
-  const UserHomePage({Key? key, required this.user}) : super(key: key);
+  const UserHomePage({super.key, required this.user});
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +25,7 @@ class UserHomePage extends StatelessWidget {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // Top image with margin
+              // Top image
               Container(
                 margin: const EdgeInsets.only(top: 20),
                 height: 160,
@@ -30,7 +38,7 @@ class UserHomePage extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              // Quick Actions Row
+              // Quick Actions
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Card(
@@ -60,21 +68,21 @@ class UserHomePage extends StatelessWidget {
                               Icons.camera_alt,
                               'Scan Photo',
                               colorScheme.primary,
-                              () => _navigateTo(context, '/scan-photo'),
+                              () => _navigateTo(context, const ScanPhotoPage()),
                             ),
                             _buildQuickAction(
                               context,
                               Icons.upload_file,
                               'Upload PDF',
                               colorScheme.secondary,
-                              () => _navigateTo(context, '/upload-pdf'),
+                              () => _navigateTo(context, const UploadPdfScreen()),
                             ),
                             _buildQuickAction(
                               context,
                               Icons.settings,
                               'Settings',
                               Colors.orange,
-                              () => _navigateTo(context, '/settings'),
+                              () => _navigateTo(context, const UserSettings()),
                             ),
                           ],
                         ),
@@ -100,35 +108,28 @@ class UserHomePage extends StatelessWidget {
                       Icons.medical_services,
                       'Book Test',
                       colorScheme.primary,
-                      () => _navigateTo(context, '/book-test'),
+                      () => _navigateTo(context, const BookTestScreen()),
                     ),
                     _buildActionCard(
                       context,
                       Icons.calendar_today,
                       'Book Appointment',
                       colorScheme.secondary,
-                      () {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => BookAppointmentScreen(user: user),
-    ),
-  );
-},
+                      () => _navigateTo(context, BookAppointmentScreen(user: user)),
                     ),
                     _buildActionCard(
                       context,
                       Icons.assignment,
                       'Past Reports',
                       Colors.orange,
-                      () => _navigateTo(context, '/reports'),
+                      () => _navigateTo(context, const PastReportsScreen()),
                     ),
                     _buildActionCard(
                       context,
                       Icons.description,
                       'Prescription',
                       Colors.green,
-                      () => _navigateTo(context, '/prescription'),
+                      () => _navigateTo(context, const UserPrescriptionScreen()),
                     ),
                   ],
                 ),
@@ -158,6 +159,7 @@ class UserHomePage extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
+              // ignore: deprecated_member_use
               color: color.withOpacity(0.2),
               shape: BoxShape.circle,
             ),
@@ -202,6 +204,7 @@ class UserHomePage extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
+                  // ignore: deprecated_member_use
                   color: color.withOpacity(isDarkMode ? 0.3 : 0.2),
                   shape: BoxShape.circle,
                 ),
@@ -244,20 +247,20 @@ class UserHomePage extends StatelessWidget {
       onTap: (index) {
         switch (index) {
           case 1:
-            _navigateTo(context, '/reports');
+            _navigateTo(context, const UserReports());
             break;
           case 2:
-            _navigateTo(context, '/appointments');
+            _navigateTo(context, UserAppointments(user: user));
             break;
           case 3:
-            _navigateTo(context, '/settings');
+            _navigateTo(context, const UserSettings());
             break;
         }
       },
     );
   }
 
-  void _navigateTo(BuildContext context, String route) {
-    Navigator.pushNamed(context, route);
+  void _navigateTo(BuildContext context, Widget page) {
+    Navigator.push(context, MaterialPageRoute(builder: (context) => page));
   }
 }

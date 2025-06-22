@@ -10,9 +10,10 @@ import './doctor_specialization.dart';
 class DoctorLicenseUpload extends StatefulWidget {
   final Map<String, dynamic> user;
 
-  const DoctorLicenseUpload({Key? key, required this.user}) : super(key: key);
+  const DoctorLicenseUpload({super.key, required this.user});
 
   @override
+  // ignore: library_private_types_in_public_api
   _DoctorLicenseUploadState createState() => _DoctorLicenseUploadState();
 }
 
@@ -48,7 +49,7 @@ class _DoctorLicenseUploadState extends State<DoctorLicenseUpload> {
     try {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('http://192.168.10.18:5000/api/upload-license'),
+        Uri.parse('http://192.168.1.4:5000/api/upload-license'),
       );
 
       request.files.add(await http.MultipartFile.fromPath('license', _licenseFile!.path));
@@ -62,6 +63,7 @@ class _DoctorLicenseUploadState extends State<DoctorLicenseUpload> {
 
       if (response.statusCode == 200 && result['success'] == true) {
         Navigator.pushReplacement(
+          // ignore: use_build_context_synchronously
           context,
           MaterialPageRoute(
             builder: (context) => DoctorSpecializationScreen(user: widget.user),
