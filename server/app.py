@@ -478,17 +478,17 @@ def book_appointment():
             return jsonify({'success': False, 'message': 'Request must be JSON'}), 400
 
         data = request.get_json()
-        
+
         # Validate required fields
         required_fields = ['userId', 'doctorId', 'date', 'time']
-        missing_fields = [field for field in required_fields if field not in data or not data[field]]
+        missing_fields = [field for field in required_fields if not data.get(field)]
         if missing_fields:
             return jsonify({
                 'success': False,
-                'message': f'Missing required fields: {', '.join(missing_fields)}'
+                'message': f"Missing required fields: {', '.join(missing_fields)}"
             }), 400
 
-        # Validate doctor
+        # Validate doctorId
         if not ObjectId.is_valid(data['doctorId']):
             return jsonify({'success': False, 'message': 'Invalid doctor ID format'}), 400
 
@@ -496,13 +496,13 @@ def book_appointment():
         if not doctor:
             return jsonify({'success': False, 'message': 'Doctor not found'}), 404
 
-        # Validate date
+        # Validate date format
         try:
             datetime.strptime(data['date'], '%Y-%m-%d')
         except ValueError:
             return jsonify({'success': False, 'message': 'Invalid date format. Use YYYY-MM-DD'}), 400
 
-        # Check if slot is already booked
+        # Check if the slot is already booked
         already_booked = mongo.db.appointments.find_one({
             'doctorId': data['doctorId'],
             'date': data['date'],
@@ -512,6 +512,20 @@ def book_appointment():
         if already_booked:
             return jsonify({'success': False, 'message': 'This time slot is already booked'}), 400
 
+        # Create chat
+        channel = data['doctorId'] + data['userId']
+        chat = {
+            'userId': data['userId'],
+            'doctorId': data['doctorId'],
+            'channel': channel,
+            'messages': [],  # Empty message list for now
+            'appointmentTime': data['time'],
+            'appointmentDate': data['date'],
+            'created_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow()
+        }
+        mongo.db.chats.insert_one(chat)
+
         # Create appointment
         appointment = {
             'userId': data['userId'],
@@ -519,8 +533,9 @@ def book_appointment():
             'doctorName': doctor.get('name'),
             'date': data['date'],
             'time': data['time'],
-            'payment': data.get('payment', None),  # Optional
+            'payment': data.get('payment'),  # Optional
             'status': 'booked',
+            'channel': channel,
             'created_at': datetime.utcnow(),
             'updated_at': datetime.utcnow()
         }
@@ -817,8 +832,46 @@ def start_call():
 
     return jsonify({'success': True, 'token': token})
 
+@app.route('/api/chat/channel/<channel>', methods=['GET'])
+def get_chat_by_channel(channel):
+    chat = mongo.db.chats.find_one({'channel': channel})
+    if not chat:
+        return jsonify({'success': False, 'message': 'Chat not found'}), 404
+    chat['_id'] = str(chat['_id'])
+    return jsonify({'success': True, 'chat': chat}), 200
 
+@app.route('/api/chat/<chat_id>/messages', methods=['POST'])
+def send_message(chat_id):
+    try:
+        data = request.get_json()
+        sender = data.get('sender')
+        content = data.get('content')
 
+        if not sender or not content:
+            return jsonify({'success': False, 'message': 'Sender and content are required'}), 400
+
+        chat = mongo.db.chats.find_one({'_id': ObjectId(chat_id)})
+        if not chat:
+            return jsonify({'success': False, 'message': 'Chat not found'}), 404
+
+        message = {
+            'sender': sender,
+            'content': content,
+            'timestamp': datetime.utcnow().isoformat()
+        }
+
+        mongo.db.chats.update_one(
+            {'_id': ObjectId(chat_id)},
+            {
+                '$push': {'messages': message},
+                '$set': {'updated_at': datetime.utcnow()}
+            }
+        )
+
+        return jsonify({'success': True, 'message': 'Message sent'}), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error sending message: {str(e)}'}), 500
 
 
 

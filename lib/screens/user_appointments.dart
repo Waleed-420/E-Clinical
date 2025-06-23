@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:e_clinical/screens/chat_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
@@ -131,10 +132,14 @@ class _UserAppointmentsState extends State<UserAppointments> {
               Icons.chat,
               'Chat',
               Colors.blue,
-              () => _showFeatureDialog(
-                context,
-                'Chat with ${appointment['otherName']}',
-              ),
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ChatScreen(channel: appointment['doctorId'] + appointment['userId'], currentUser: widget.user),
+                  ),
+                );
+              }
             ),
             _buildFeatureButton(
               context,
@@ -198,10 +203,12 @@ class _UserAppointmentsState extends State<UserAppointments> {
               Icons.chat,
               'Chat',
               Colors.blue,
-              () => _showFeatureDialog(
-                context,
-                'Chat with ${appointment['otherName']}',
-              ),
+              () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ChatScreen(channel: appointment['doctorId'] + appointment['userId'], currentUser: widget.user),
+                  ),
+                ),
             ),
             _buildFeatureButton(
               context,

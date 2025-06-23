@@ -471,8 +471,8 @@ class SchedulePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return DoctorScheduleSetup(
       user: user,
-      specialization: 'Specialization', // Pass actual specialization
-      name: 'Doctor Name', // Pass actual name
+      specialization: user['specialization'], // Pass actual specialization
+      name: user['name'], // Pass actual name
     );
   }
 }
