@@ -1,8 +1,7 @@
-import 'package:e_clinical/screens/user_appointments.dart';
+import 'user_appointments.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'doctor_detail.dart';
 import 'doctor_license_upload.dart';
 import 'doctor_schedule_setup.dart';
 import 'doctor_specialization.dart';
@@ -53,7 +52,9 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
   Future<void> _fetchDoctorData() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.4:5000/api/doctors?doctorId=${widget.user['_id']}'),
+        Uri.parse(
+          'http://192.168.1.3:5000/api/doctors?doctorId=${widget.user['_id']}',
+        ),
       );
 
       if (response.statusCode == 200) {
@@ -70,7 +71,9 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
   Future<void> _fetchUpcomingAppointments() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.4:5000/api/appointments?doctorId=${widget.user['_id']}&status=booked'),
+        Uri.parse(
+          'http://192.168.1.3:5000/api/appointments?doctorId=${widget.user['_id']}&status=booked',
+        ),
       );
 
       if (response.statusCode == 200) {
@@ -95,10 +98,7 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
         title: const Text('Doctor Dashboard'),
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
         ],
       ),
       body: _isLoading
@@ -126,12 +126,18 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
                               const Spacer(),
                               Chip(
                                 label: Text(
-                                  isVerified ? 'Verified' : 'Pending Verification',
+                                  isVerified
+                                      ? 'Verified'
+                                      : 'Pending Verification',
                                   style: TextStyle(
-                                    color: isVerified ? Colors.white : Colors.black,
+                                    color: isVerified
+                                        ? Colors.white
+                                        : Colors.black,
                                   ),
                                 ),
-                                backgroundColor: isVerified ? Colors.green : Colors.yellow,
+                                backgroundColor: isVerified
+                                    ? Colors.green
+                                    : Colors.yellow,
                               ),
                             ],
                           ),
@@ -160,14 +166,22 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    ..._upcomingAppointments.take(3).map((appointment) => Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            title: Text('Patient: ${appointment['patientName'] ?? 'Anonymous'}'),
-                            subtitle: Text('${appointment['date']} at ${appointment['time']}'),
-                            trailing: const Icon(Icons.calendar_today),
+                    ..._upcomingAppointments
+                        .take(3)
+                        .map(
+                          (appointment) => Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              title: Text(
+                                'Patient: ${appointment['patientName'] ?? 'Anonymous'}',
+                              ),
+                              subtitle: Text(
+                                '${appointment['date']} at ${appointment['time']}',
+                              ),
+                              trailing: const Icon(Icons.calendar_today),
+                            ),
                           ),
-                        )),
+                        ),
                     if (_upcomingAppointments.length > 3)
                       TextButton(
                         onPressed: () {},
@@ -192,7 +206,8 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => DoctorLicenseUpload(user: widget.user),
+                              builder: (context) =>
+                                  DoctorLicenseUpload(user: widget.user),
                             ),
                           ).then((_) => _loadData());
                         },
@@ -206,7 +221,8 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => DoctorSpecializationScreen(user: widget.user),
+                              builder: (context) =>
+                                  DoctorSpecializationScreen(user: widget.user),
                             ),
                           ).then((_) => _loadData());
                         },
@@ -221,7 +237,7 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
                             MaterialPageRoute(
                               builder: (context) => DoctorScheduleSetup(
                                 user: widget.user,
-                                name: name,
+                                name: widget.user['name'],
                                 specialization: specialization,
                               ),
                             ),
@@ -272,9 +288,7 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
   }) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
@@ -285,7 +299,11 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(icon, size: 40, color: color ?? Theme.of(context).primaryColor),
+                  Icon(
+                    icon,
+                    size: 40,
+                    color: color ?? Theme.of(context).primaryColor,
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     title,
@@ -300,10 +318,7 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
                       padding: const EdgeInsets.only(top: 4.0),
                       child: Text(
                         subtitle,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -325,10 +340,7 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
                     ),
                     child: Text(
                       badge.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
                       textAlign: TextAlign.center,
                     ),
                   ),

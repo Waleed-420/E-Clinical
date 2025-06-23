@@ -13,14 +13,27 @@ from pdf2image import convert_from_bytes
 import io
 from apscheduler.schedulers.background import BackgroundScheduler
 import pytz
+import firebase_admin
+from firebase_admin import credentials, messaging
+from apscheduler.schedulers.background import BackgroundScheduler
+import pytz
+from agora_token_builder import RtcTokenBuilder
 
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
+cred = credentials.Certificate("serviceAccountKey.json")
+firebase_admin.initialize_app(cred)
+
+AGORA_APP_ID = 'dff72470ec104f92aa6cc17e36337822'
+AGORA_APP_CERTIFICATE = '007eJxTYPj7fo2ZmvXBkz+Svy64FJwp+CzJ87f1PBu1X0kMW1JXex9XYLA0Tku0SLVMTTY0MTOxNLVMTEqxNDFMM0wzNk0yNTE3EFaKzGgIZGQwutPLzMgAgSA+B0OqbnJOZl5mMgMDAE27IW0='
+
 # MongoDB configuration
 app.config["MONGO_URI"] = "mongodb://localhost:27017/healthcare_app"
 mongo = PyMongo(app)
+# print mongo db connected
+
 
 # Email validation regex
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9.+_-]+@[a-zA-Z0-9._-]+\.[a-zA-Z]{2,}$')
@@ -680,41 +693,132 @@ def get_user_appointments(user_id):
 
     return jsonify({'success': True, 'appointments': appointments}), 200
 
-from apscheduler.schedulers.background import BackgroundScheduler
-from datetime import datetime, timedelta
-import pytz
+
+# from apscheduler.schedulers.background import BackgroundScheduler
+# from datetime import datetime, timedelta
+# import pytz
+# def check_upcoming_appointments():
+#     now = datetime.utcnow().replace(tzinfo=pytz.utc)
+#     five_mins_later = now + timedelta(minutes=24)
+#     today_str = now.strftime('%Y-%m-%d')
+
+#     upcoming = mongo.db.appointments.find({
+#         'date': today_str,
+#         'status': {'$in': ['booked', 'confirmed']}
+#     })
+
+#     for appt in upcoming:
+#         appt_time = datetime.strptime(f"{appt['date']} {appt['time']}", "%Y-%m-%d %H:%M")
+#         appt_time = appt_time.replace(tzinfo=pytz.utc)
+
+#         if now <= appt_time <= five_mins_later:
+#             send_notification(appt)
+
+# def send_notification(appt):
+#     user = mongo.db.users.find_one({'_id': ObjectId(appt['userId'])})
+#     doctor = mongo.db.doctors.find_one({'_id': ObjectId(appt['doctorId'])})
+    
+#     user_msg = f"Reminder: Your appointment with Dr. {doctor.get('name')} is at {appt['time']}."
+#     doctor_msg = f"Reminder: You have an appointment with {user.get('name')} at {appt['time']}."
+
+#     # Replace with actual push/email/sms service
+#     print("Notify User:", user_msg)
+#     print("Notify Doctor:", doctor_msg)
+
+# scheduler = BackgroundScheduler()
+# scheduler.add_job(check_upcoming_appointments, 'interval', minutes=1)
+# scheduler.start()
+
+@app.route('/api/save-token', methods=['POST'])
+def save_token():
+    data = request.json
+    user_id = data.get('userId')
+    is_doctor = data.get('isDoctor')
+    token = data.get('deviceToken')
+
+    collection = mongo.db.doctors if is_doctor else mongo.db.users
+    collection.update_one(
+        {'_id': ObjectId(user_id)},
+        {'$set': {'deviceToken': token}}
+    )
+    return jsonify({'success': True}), 200
+
+def send_fcm(token, title, body):
+    if not token:
+        return
+    message = messaging.Message(
+        notification=messaging.Notification(title=title, body=body),
+        token=token,
+    )
+    messaging.send(message)
 
 def check_upcoming_appointments():
-    now = datetime.utcnow().replace(tzinfo=pytz.utc)
-    five_mins_later = now + timedelta(minutes=24)
-    today_str = now.strftime('%Y-%m-%d')
+    now = datetime.now(pytz.utc)
+    reminder_time = now + timedelta(minutes=5)
+    date_str = reminder_time.strftime('%Y-%m-%d')
+    time_str = reminder_time.strftime('%H:%M')
 
-    upcoming = mongo.db.appointments.find({
-        'date': today_str,
+    appointments = mongo.db.appointments.find({
+        'date': date_str,
+        'time': time_str,
         'status': {'$in': ['booked', 'confirmed']}
     })
 
-    for appt in upcoming:
-        appt_time = datetime.strptime(f"{appt['date']} {appt['time']}", "%Y-%m-%d %H:%M")
-        appt_time = appt_time.replace(tzinfo=pytz.utc)
+    for appt in appointments:
+        user = mongo.db.users.find_one({'_id': ObjectId(appt['userId'])})
+        doctor = mongo.db.doctors.find_one({'_id': ObjectId(appt['doctorId'])})
 
-        if now <= appt_time <= five_mins_later:
-            send_notification(appt)
-
-def send_notification(appt):
-    user = mongo.db.users.find_one({'_id': ObjectId(appt['userId'])})
-    doctor = mongo.db.doctors.find_one({'_id': ObjectId(appt['doctorId'])})
-    
-    user_msg = f"Reminder: Your appointment with Dr. {doctor.get('name')} is at {appt['time']}."
-    doctor_msg = f"Reminder: You have an appointment with {user.get('name')} at {appt['time']}."
-
-    # Replace with actual push/email/sms service
-    print("Notify User:", user_msg)
-    print("Notify Doctor:", doctor_msg)
+        send_fcm(user.get('deviceToken'), "Appointment Reminder",
+                 f"Your appointment with Dr. {doctor['name']} is at {appt['time']}")
+        send_fcm(doctor.get('deviceToken'), "Appointment Reminder",
+                 f"You have an appointment with {user['name']} at {appt['time']}")
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(check_upcoming_appointments, 'interval', minutes=1)
 scheduler.start()
+
+@app.route('/api/start-call', methods=['POST'])
+def start_call():
+    data = request.json
+    channel_name = data['channelName']
+    uid = 0
+    expire_time = int(time.time()) + 300
+
+    token = RtcTokenBuilder.buildTokenWithUid(
+        AGORA_APP_ID, AGORA_APP_CERTIFICATE,
+        channel_name, uid, 1, expire_time
+    )
+
+    # Send push notification to user
+    target_token = data['targetFCMToken']
+    messaging.send(messaging.Message(
+        notification=messaging.Notification(
+            title='Incoming Video Call',
+            body='Doctor is calling you now.',
+        ),
+        data={
+            'token': token,
+            'channelName': channel_name,
+        },
+        token=target_token,
+    ))
+
+    return jsonify({'success': True, 'token': token})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -722,7 +826,7 @@ scheduler.start()
 
 if __name__ == '__main__':
     app.run(
-        host='192.168.1.4',
+        host='192.168.1.3',
         port=5000,
         debug=True
     )

@@ -17,7 +17,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   String? _selectedGender;
   String _role = 'General User';
   bool _isLoading = false;
@@ -30,7 +31,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
 
     final response = await http.post(
-      Uri.parse('http://192.168.1.4:5000/api/signup'),
+      Uri.parse('http://192.168.1.3:5000/api/signup'),
       headers: {'Content-Type': 'application/json'},
       body: json.encode({
         'name': _nameController.text.trim(),
@@ -39,7 +40,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         'gender': _selectedGender,
         'password': _passwordController.text,
         'confirmPassword': _confirmPasswordController.text,
-        'role': _role
+        'role': _role,
       }),
     );
 
@@ -53,19 +54,27 @@ class _SignUpScreenState extends State<SignUpScreen> {
       // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(responseData['message'] ?? 'Registered successfully', style: TextStyle(color: Colors.white)),
+          content: Text(
+            responseData['message'] ?? 'Registered successfully',
+            style: TextStyle(color: Colors.white),
+          ),
           backgroundColor: Colors.green,
           duration: Duration(seconds: 2),
         ),
       );
       await Future.delayed(Duration(seconds: 2));
       // ignore: use_build_context_synchronously
-      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => SignInScreen()));
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => SignInScreen()));
     } else {
       // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(responseData['message'] ?? 'Registration failed', style: TextStyle(color: Colors.white)),
+          content: Text(
+            responseData['message'] ?? 'Registration failed',
+            style: TextStyle(color: Colors.white),
+          ),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
@@ -95,7 +104,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
-                            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)],
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black26, blurRadius: 10),
+                            ],
                           ),
                           child: Form(
                             key: _formKey,
@@ -104,32 +115,76 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               children: [
                                 const SizedBox(height: 20),
                                 Center(
-                                  child: Text("Sign Up", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF15A196))),
+                                  child: Text(
+                                    "Sign Up",
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF15A196),
+                                    ),
+                                  ),
                                 ),
                                 const SizedBox(height: 20),
-                                _buildTextField('Name', _nameController, Icons.person),
-                                _buildTextField('Date of Birth', _dobController, Icons.cake, readOnly: true, onTap: _pickDate),
-                                _buildTextField('Email', _emailController, Icons.email),
+                                _buildTextField(
+                                  'Name',
+                                  _nameController,
+                                  Icons.person,
+                                ),
+                                _buildTextField(
+                                  'Date of Birth',
+                                  _dobController,
+                                  Icons.cake,
+                                  readOnly: true,
+                                  onTap: _pickDate,
+                                ),
+                                _buildTextField(
+                                  'Email',
+                                  _emailController,
+                                  Icons.email,
+                                ),
                                 _buildDropdownGender(context),
-                                _buildTextField('Password', _passwordController, Icons.lock, obscureText: true),
-                                _buildTextField('Confirm Password', _confirmPasswordController, Icons.lock_outline, obscureText: true),
+                                _buildTextField(
+                                  'Password',
+                                  _passwordController,
+                                  Icons.lock,
+                                  obscureText: true,
+                                ),
+                                _buildTextField(
+                                  'Confirm Password',
+                                  _confirmPasswordController,
+                                  Icons.lock_outline,
+                                  obscureText: true,
+                                ),
                                 const SizedBox(height: 10),
-                                const Text('Register as:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                const Text(
+                                  'Register as:',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                  children: ['General User', 'Doctor', 'Laboratory'].map((role) {
-                                    return Row(
-                                      children: [
-                                        Radio<String>(
-                                          value: role,
-                                          groupValue: _role,
-                                          activeColor: const Color(0xFF15A196),
-                                          onChanged: (value) => setState(() => _role = value!),
-                                        ),
-                                        Text(role),
-                                      ],
-                                    );
-                                  }).toList(),
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceAround,
+                                  children:
+                                      [
+                                        'General User',
+                                        'Doctor',
+                                        'Laboratory',
+                                      ].map((role) {
+                                        return Row(
+                                          children: [
+                                            Radio<String>(
+                                              value: role,
+                                              groupValue: _role,
+                                              activeColor: const Color(
+                                                0xFF15A196,
+                                              ),
+                                              onChanged: (value) => setState(
+                                                () => _role = value!,
+                                              ),
+                                            ),
+                                            Text(role),
+                                          ],
+                                        );
+                                      }).toList(),
                                 ),
                                 const SizedBox(height: 20),
                                 Center(
@@ -137,32 +192,58 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                     onPressed: _isLoading
                                         ? null
                                         : () {
-                                            if (_formKey.currentState!.validate()) {
+                                            if (_formKey.currentState!
+                                                .validate()) {
                                               _registerUser();
                                             }
                                           },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color(0xFF15A196),
-                                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                                      foregroundColor: const Color.fromARGB(255, 255, 255, 255),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 40,
+                                        vertical: 12,
+                                      ),
+                                      foregroundColor: const Color.fromARGB(
+                                        255,
+                                        255,
+                                        255,
+                                        255,
+                                      ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                     ),
                                     child: _isLoading
-                                        ? CircularProgressIndicator(color: Colors.white)
+                                        ? CircularProgressIndicator(
+                                            color: Colors.white,
+                                          )
                                         : const Text('Register'),
                                   ),
                                 ),
                                 const SizedBox(height: 10),
                                 Center(
                                   child: TextButton(
-                                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => SignInScreen())),
+                                    onPressed: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => SignInScreen(),
+                                      ),
+                                    ),
                                     child: RichText(
                                       text: const TextSpan(
                                         children: [
-                                          TextSpan(text: "Already have an account? ", style: TextStyle(color: Colors.grey)),
-                                          TextSpan(text: "Sign In", style: TextStyle(color: Color(0xFF15A196))),
+                                          TextSpan(
+                                            text: "Already have an account? ",
+                                            style: TextStyle(
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                          TextSpan(
+                                            text: "Sign In",
+                                            style: TextStyle(
+                                              color: Color(0xFF15A196),
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -177,7 +258,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           child: SizedBox(
                             height: 300,
                             width: 300,
-                            child: Image.asset('assets/images/doctor_top.png', fit: BoxFit.contain),
+                            child: Image.asset(
+                              'assets/images/doctor_top.png',
+                              fit: BoxFit.contain,
+                            ),
                           ),
                         ),
                       ],
@@ -192,8 +276,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  Widget _buildTextField(String hint, TextEditingController controller, IconData icon,
-      {bool obscureText = false, bool readOnly = false, VoidCallback? onTap}) {
+  Widget _buildTextField(
+    String hint,
+    TextEditingController controller,
+    IconData icon, {
+    bool obscureText = false,
+    bool readOnly = false,
+    VoidCallback? onTap,
+  }) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -207,7 +297,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
         obscureText: obscureText,
         readOnly: readOnly,
         onTap: onTap,
-        decoration: InputDecoration(icon: Icon(icon), hintText: hint, border: InputBorder.none),
+        decoration: InputDecoration(
+          icon: Icon(icon),
+          hintText: hint,
+          border: InputBorder.none,
+        ),
         validator: (value) => value!.isEmpty ? '$hint is required' : null,
       ),
     );
@@ -235,7 +329,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
           hintText: 'Select Gender',
         ),
         items: ['Male', 'Female', 'Other']
-            .map((gender) => DropdownMenuItem(value: gender, child: Text(gender, style: TextStyle(color: Color(0xFF15A196)))))
+            .map(
+              (gender) => DropdownMenuItem(
+                value: gender,
+                child: Text(gender, style: TextStyle(color: Color(0xFF15A196))),
+              ),
+            )
             .toList(),
         onChanged: (value) => setState(() => _selectedGender = value),
         validator: (value) => value == null ? 'Gender is required' : null,
@@ -251,8 +350,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
     );
-    if (date != null) {
-      _dobController.text = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-    }
+    _dobController.text =
+        "${date?.year}-${date?.month.toString().padLeft(2, '0')}-${date?.day.toString().padLeft(2, '0')}";
   }
 }

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
-import './doctor_detail.dart';
+import 'doctor_detail.dart';
 
 class BookAppointmentScreen extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -44,7 +43,8 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
 
     try {
       final uri = Uri.parse(
-          'http://192.168.1.4:5000/api/doctors?specialization=${Uri.encodeComponent(_selectedSpecialization!)}');
+        'http://192.168.1.3:5000/api/doctors?specialization=${Uri.encodeComponent(_selectedSpecialization!)}',
+      );
       final response = await http.get(uri);
 
       if (response.statusCode == 200) {
@@ -79,10 +79,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Book Appointment'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Book Appointment'), elevation: 0),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -90,7 +87,9 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
           children: [
             Text(
               'Find a Doctor',
-              style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
@@ -100,10 +99,9 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                 border: OutlineInputBorder(),
               ),
               items: _specializations
-                  .map((spec) => DropdownMenuItem(
-                        value: spec,
-                        child: Text(spec),
-                      ))
+                  .map(
+                    (spec) => DropdownMenuItem(value: spec, child: Text(spec)),
+                  )
                   .toList(),
               onChanged: (value) {
                 setState(() {
@@ -114,9 +112,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             ),
             const SizedBox(height: 24),
             if (_isLoading)
-              const Expanded(
-                child: Center(child: CircularProgressIndicator()),
-              )
+              const Expanded(child: Center(child: CircularProgressIndicator()))
             else if (_errorMessage != null)
               Expanded(
                 child: Center(
@@ -142,9 +138,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
                       child: ListTile(
-                        leading: const CircleAvatar(
-                          child: Icon(Icons.person),
-                        ),
+                        leading: const CircleAvatar(child: Icon(Icons.person)),
                         title: Text(doctor['name'] ?? 'Dr. Unknown'),
                         subtitle: Text(doctor['specialization'] ?? ''),
                         trailing: const Icon(Icons.chevron_right),

@@ -43,7 +43,9 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
     try {
       final date = DateFormat('yyyy-MM-dd').format(_selectedDay);
       final doctorId = widget.doctor['_id'];
-      final uri = Uri.parse('http://192.168.1.4:5000/api/doctor/$doctorId/slots?date=$date');
+      final uri = Uri.parse(
+        'http://192.168.1.3:5000/api/doctor/$doctorId/slots?date=$date',
+      );
 
       final response = await http.get(uri);
 
@@ -64,7 +66,8 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error fetching slots: ${e.toString().replaceAll(RegExp(r'<!DOCTYPE.*'), 'Server error')}';
+        _errorMessage =
+            'Error fetching slots: ${e.toString().replaceAll(RegExp(r'<!DOCTYPE.*'), 'Server error')}';
       });
     } finally {
       setState(() {
@@ -85,7 +88,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.4:5000/api/appointments'),
+        Uri.parse('http://192.168.1.3:5000/api/appointments'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'userId': widget.user['_id'],
@@ -125,10 +128,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
     final specialization = widget.doctor['specialization'] ?? '';
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Book Appointment'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Book Appointment'), elevation: 0),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -142,7 +142,10 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                   radius: 30,
                   child: Icon(Icons.person, size: 30),
                 ),
-                title: Text(doctorName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                title: Text(
+                  doctorName,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
                 subtitle: Text(specialization),
               ),
             ),
@@ -186,7 +189,10 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
             const SizedBox(height: 24),
 
             // Time Slots
-            Text('Available Time Slots', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Available Time Slots',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
             if (_isLoading)
               const Center(child: CircularProgressIndicator())
@@ -198,48 +204,50 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: _availableSlots
-    .expand<Widget>((slotRange) {
-      final List<dynamic> slots = slotRange['slots'] ?? [];
+                children: _availableSlots.expand<Widget>((slotRange) {
+                  final List<dynamic> slots = slotRange['slots'] ?? [];
 
-      final Set<String> seenTimes = {}; // To track and skip duplicates
+                  final Set<String> seenTimes =
+                      {}; // To track and skip duplicates
 
-      return slots.map<Widget>((slotObj) {
-        final String? time = slotObj['time'];
-        final bool isBooked = slotObj['booked'] ?? false;
+                  return slots.map<Widget>((slotObj) {
+                    final String? time = slotObj['time'];
+                    final bool isBooked = slotObj['booked'] ?? false;
 
-        if (time == null || seenTimes.contains(time)) return const SizedBox();
+                    if (time == null || seenTimes.contains(time)) {
+                      return const SizedBox();
+                    }
 
-        seenTimes.add(time);
+                    seenTimes.add(time);
 
-        // Convert time (e.g. "08:00") to 30-minute range "08:00 - 08:30"
-        final timeParts = time.split(':');
-        final int hour = int.parse(timeParts[0]);
-        final int minute = int.parse(timeParts[1]);
+                    // Convert time (e.g. "08:00") to 30-minute range "08:00 - 08:30"
+                    final timeParts = time.split(':');
+                    final int hour = int.parse(timeParts[0]);
+                    final int minute = int.parse(timeParts[1]);
 
-        final start = TimeOfDay(hour: hour, minute: minute);
-        final end = start.replacing(minute: (minute + 30) % 60, hour: hour + ((minute + 30) ~/ 60));
-        final rangeLabel = '${start.format(context)} - ${end.format(context)}';
+                    final start = TimeOfDay(hour: hour, minute: minute);
+                    final end = start.replacing(
+                      minute: (minute + 30) % 60,
+                      hour: hour + ((minute + 30) ~/ 60),
+                    );
+                    final rangeLabel =
+                        '${start.format(context)} - ${end.format(context)}';
 
-        return ChoiceChip(
-          label: Text(rangeLabel),
-          selected: _selectedSlot == time && !isBooked,
-          onSelected: isBooked
-              ? null
-              : (selected) {
-                  setState(() {
-                    _selectedSlot = selected ? time : null;
-                  });
-                },
-          backgroundColor: isBooked ? Colors.grey.shade300 : null,
-          disabledColor: Colors.grey.shade300,
-        );
-      }).toList();
-    })
-    .toList(),
-
-
-
+                    return ChoiceChip(
+                      label: Text(rangeLabel),
+                      selected: _selectedSlot == time && !isBooked,
+                      onSelected: isBooked
+                          ? null
+                          : (selected) {
+                              setState(() {
+                                _selectedSlot = selected ? time : null;
+                              });
+                            },
+                      backgroundColor: isBooked ? Colors.grey.shade300 : null,
+                      disabledColor: Colors.grey.shade300,
+                    );
+                  }).toList();
+                }).toList(),
               ),
 
             const SizedBox(height: 32),
@@ -248,7 +256,9 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _isLoading || _selectedSlot == null ? null : _bookAppointment,
+                onPressed: _isLoading || _selectedSlot == null
+                    ? null
+                    : _bookAppointment,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
