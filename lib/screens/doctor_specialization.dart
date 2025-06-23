@@ -41,7 +41,7 @@ class _DoctorSpecializationScreenState
   Future<bool> updateSpecializationOnServer() async {
     final doctorId = widget.user['_id'];
     final url = Uri.parse(
-      'http://192.168.10.10:5000/api/doctor/$doctorId/specialization',
+      'http://192.168.1.8:5000/api/doctor/$doctorId/specialization',
     );
 
     try {
@@ -170,6 +170,7 @@ class _DoctorSpecializationScreenState
                               MaterialPageRoute(
                                 builder: (context) => DoctorScheduleSetup(
                                   user: widget.user,
+                                  name: widget.user['name'],
                                   specialization: _selectedSpecialization!,
                                 ),
                               ),

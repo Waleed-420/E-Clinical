@@ -5,7 +5,7 @@ import 'dart:io';
 import 'dart:convert';
 
 // TODO: Replace this with actual import path
-import './doctor_specialization.dart';
+import 'doctor_specialization.dart';
 
 class DoctorLicenseUpload extends StatefulWidget {
   final Map<String, dynamic> user;

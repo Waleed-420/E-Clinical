@@ -350,9 +350,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
     );
-    if (date != null) {
-      _dobController.text =
-          "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-    }
+    _dobController.text =
+        "${date?.year}-${date?.month.toString().padLeft(2, '0')}-${date?.day.toString().padLeft(2, '0')}";
   }
 }

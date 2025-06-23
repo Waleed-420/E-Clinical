@@ -3,7 +3,8 @@ import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import './doctor_detail.dart';
+import 'dart:convert';
+import 'doctor_detail.dart';
 
 class BookAppointmentScreen extends StatefulWidget {
   final Map<String, dynamic> user;

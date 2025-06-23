@@ -214,8 +214,9 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                     final String? time = slotObj['time'];
                     final bool isBooked = slotObj['booked'] ?? false;
 
-                    if (time == null || seenTimes.contains(time))
+                    if (time == null || seenTimes.contains(time)) {
                       return const SizedBox();
+                    }
 
                     seenTimes.add(time);
 

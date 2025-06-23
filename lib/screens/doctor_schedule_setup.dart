@@ -5,19 +5,19 @@ import 'package:intl/intl.dart';
 import 'package:time_range/time_range.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'doctor_home_page.dart';
+import 'doctor_dashboard.dart';
 
 // ignore: must_be_immutable
 class DoctorScheduleSetup extends StatefulWidget {
   final Map<String, dynamic> user;
   final String specialization;
-  String name;
+  final String name;
 
-  DoctorScheduleSetup({
+  const DoctorScheduleSetup({
     super.key,
     required this.user,
     required this.specialization,
-    this.name = 'Doctor',
+    required this.name,
   });
 
   @override
@@ -51,7 +51,7 @@ class _DoctorScheduleSetupState extends State<DoctorScheduleSetup> {
                   backgroundColor: Colors.transparent,
                   activeBackgroundColor: Theme.of(context).primaryColor,
                   firstTime: const TimeOfDay(hour: 8, minute: 0),
-                  lastTime: const TimeOfDay(hour: 22, minute: 0),
+                  lastTime: const TimeOfDay(hour: 20, minute: 0),
                   timeStep: 30,
                   timeBlock: 60,
                   onRangeCompleted: (range) {
@@ -135,7 +135,7 @@ class _DoctorScheduleSetupState extends State<DoctorScheduleSetup> {
           // ignore: use_build_context_synchronously
           context,
           MaterialPageRoute(
-            builder: (context) => DoctorHomePage(user: widget.user),
+            builder: (context) => DoctorDashboard(user: widget.user),
           ),
         );
       } else {

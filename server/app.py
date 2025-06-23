@@ -13,14 +13,27 @@ from pdf2image import convert_from_bytes
 import io
 from apscheduler.schedulers.background import BackgroundScheduler
 import pytz
+import firebase_admin
+from firebase_admin import credentials, messaging
+from apscheduler.schedulers.background import BackgroundScheduler
+import pytz
+from agora_token_builder import RtcTokenBuilder
 
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
+cred = credentials.Certificate("serviceAccountKey.json")
+firebase_admin.initialize_app(cred)
+
+AGORA_APP_ID = 'dff72470ec104f92aa6cc17e36337822'
+AGORA_APP_CERTIFICATE = '007eJxTYPj7fo2ZmvXBkz+Svy64FJwp+CzJ87f1PBu1X0kMW1JXex9XYLA0Tku0SLVMTTY0MTOxNLVMTEqxNDFMM0wzNk0yNTE3EFaKzGgIZGQwutPLzMgAgSA+B0OqbnJOZl5mMgMDAE27IW0='
+
 # MongoDB configuration
 app.config["MONGO_URI"] = "mongodb://localhost:27017/healthcare_app"
 mongo = PyMongo(app)
+# print mongo db connected
+
 
 # Email validation regex
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9.+_-]+@[a-zA-Z0-9._-]+\.[a-zA-Z]{2,}$')
@@ -354,6 +367,18 @@ def save_doctor_schedule():
         upsert=True
     )
 
+    mongo.db.users.update_one(
+        {'_id': ObjectId(doctor_id)},
+        {'$set': {
+            'name': name,
+            'schedule': schedule,
+            'specialization': specialization,
+            'verified': True,
+            'updated_at': datetime.utcnow()
+        }},
+        upsert=True
+    )
+
     return jsonify({'success': True, 'message': 'Schedule saved'})
 
 # Appointment endpoints
@@ -364,17 +389,17 @@ def get_doctors():
     if specialization:
         query['specialization'] = specialization
     
-    doctors = list(mongo.db.doctors.find(query, {
+    users = list(mongo.db.users.find(query, {
         '_id': 1,
         'name': 1,
         'specialization': 1,
         'schedule': 1
     }))
     
-    for doc in doctors:
+    for doc in users:
         doc['_id'] = str(doc['_id'])
     
-    return jsonify({'success': True, 'doctors': doctors})
+    return jsonify({'success': True, 'doctors': users})
 
 @app.route('/api/doctor/<doctor_id>/specialization/slots', methods=['GET'])
 def get_available_slots(doctor_id):
@@ -453,17 +478,17 @@ def book_appointment():
             return jsonify({'success': False, 'message': 'Request must be JSON'}), 400
 
         data = request.get_json()
-        
+
         # Validate required fields
         required_fields = ['userId', 'doctorId', 'date', 'time']
-        missing_fields = [field for field in required_fields if field not in data or not data[field]]
+        missing_fields = [field for field in required_fields if not data.get(field)]
         if missing_fields:
             return jsonify({
                 'success': False,
-                'message': f'Missing required fields: {', '.join(missing_fields)}'
+                'message': f"Missing required fields: {', '.join(missing_fields)}"
             }), 400
 
-        # Validate doctor
+        # Validate doctorId
         if not ObjectId.is_valid(data['doctorId']):
             return jsonify({'success': False, 'message': 'Invalid doctor ID format'}), 400
 
@@ -471,13 +496,13 @@ def book_appointment():
         if not doctor:
             return jsonify({'success': False, 'message': 'Doctor not found'}), 404
 
-        # Validate date
+        # Validate date format
         try:
             datetime.strptime(data['date'], '%Y-%m-%d')
         except ValueError:
             return jsonify({'success': False, 'message': 'Invalid date format. Use YYYY-MM-DD'}), 400
 
-        # Check if slot is already booked
+        # Check if the slot is already booked
         already_booked = mongo.db.appointments.find_one({
             'doctorId': data['doctorId'],
             'date': data['date'],
@@ -487,6 +512,20 @@ def book_appointment():
         if already_booked:
             return jsonify({'success': False, 'message': 'This time slot is already booked'}), 400
 
+        # Create chat
+        channel = data['doctorId'] + data['userId']
+        chat = {
+            'userId': data['userId'],
+            'doctorId': data['doctorId'],
+            'channel': channel,
+            'messages': [],  # Empty message list for now
+            'appointmentTime': data['time'],
+            'appointmentDate': data['date'],
+            'created_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow()
+        }
+        mongo.db.chats.insert_one(chat)
+
         # Create appointment
         appointment = {
             'userId': data['userId'],
@@ -494,8 +533,9 @@ def book_appointment():
             'doctorName': doctor.get('name'),
             'date': data['date'],
             'time': data['time'],
-            'payment': data.get('payment', None),  # Optional
+            'payment': data.get('payment'),  # Optional
             'status': 'booked',
+            'channel': channel,
             'created_at': datetime.utcnow(),
             'updated_at': datetime.utcnow()
         }
@@ -530,7 +570,7 @@ def get_doctor_specialization(doctor_id):
 
     if not doctor:
         return jsonify({'success': False, 'message': 'Doctor not found'}), 404
-
+    
     return jsonify({
         'success': True,
         'specialization': doctor.get('specialization', None)
@@ -567,7 +607,7 @@ def update_doctor_specialization(doctor_id):
         }}
     )
 
-    # Also ensure it's updated in doctors collection if exists
+    # Update in doctors collection (secondary)
     mongo.db.doctors.update_one(
         {'_id': ObjectId(doctor_id)},
         {'$set': {
@@ -680,41 +720,170 @@ def get_user_appointments(user_id):
 
     return jsonify({'success': True, 'appointments': appointments}), 200
 
-from apscheduler.schedulers.background import BackgroundScheduler
-from datetime import datetime, timedelta
-import pytz
+
+# from apscheduler.schedulers.background import BackgroundScheduler
+# from datetime import datetime, timedelta
+# import pytz
+# def check_upcoming_appointments():
+#     now = datetime.utcnow().replace(tzinfo=pytz.utc)
+#     five_mins_later = now + timedelta(minutes=24)
+#     today_str = now.strftime('%Y-%m-%d')
+
+#     upcoming = mongo.db.appointments.find({
+#         'date': today_str,
+#         'status': {'$in': ['booked', 'confirmed']}
+#     })
+
+#     for appt in upcoming:
+#         appt_time = datetime.strptime(f"{appt['date']} {appt['time']}", "%Y-%m-%d %H:%M")
+#         appt_time = appt_time.replace(tzinfo=pytz.utc)
+
+#         if now <= appt_time <= five_mins_later:
+#             send_notification(appt)
+
+# def send_notification(appt):
+#     user = mongo.db.users.find_one({'_id': ObjectId(appt['userId'])})
+#     doctor = mongo.db.doctors.find_one({'_id': ObjectId(appt['doctorId'])})
+    
+#     user_msg = f"Reminder: Your appointment with Dr. {doctor.get('name')} is at {appt['time']}."
+#     doctor_msg = f"Reminder: You have an appointment with {user.get('name')} at {appt['time']}."
+
+#     # Replace with actual push/email/sms service
+#     print("Notify User:", user_msg)
+#     print("Notify Doctor:", doctor_msg)
+
+# scheduler = BackgroundScheduler()
+# scheduler.add_job(check_upcoming_appointments, 'interval', minutes=1)
+# scheduler.start()
+
+@app.route('/api/save-token', methods=['POST'])
+def save_token():
+    data = request.json
+    user_id = data.get('userId')
+    is_doctor = data.get('isDoctor')
+    token = data.get('deviceToken')
+
+    collection = mongo.db.doctors if is_doctor else mongo.db.users
+    collection.update_one(
+        {'_id': ObjectId(user_id)},
+        {'$set': {'deviceToken': token}}
+    )
+    return jsonify({'success': True}), 200
+
+def send_fcm(token, title, body):
+    if not token:
+        return
+    message = messaging.Message(
+        notification=messaging.Notification(title=title, body=body),
+        token=token,
+    )
+    messaging.send(message)
 
 def check_upcoming_appointments():
-    now = datetime.utcnow().replace(tzinfo=pytz.utc)
-    five_mins_later = now + timedelta(minutes=24)
-    today_str = now.strftime('%Y-%m-%d')
+    now = datetime.now(pytz.utc)
+    reminder_time = now + timedelta(minutes=5)
+    date_str = reminder_time.strftime('%Y-%m-%d')
+    time_str = reminder_time.strftime('%H:%M')
 
-    upcoming = mongo.db.appointments.find({
-        'date': today_str,
+    appointments = mongo.db.appointments.find({
+        'date': date_str,
+        'time': time_str,
         'status': {'$in': ['booked', 'confirmed']}
     })
 
-    for appt in upcoming:
-        appt_time = datetime.strptime(f"{appt['date']} {appt['time']}", "%Y-%m-%d %H:%M")
-        appt_time = appt_time.replace(tzinfo=pytz.utc)
+    for appt in appointments:
+        user = mongo.db.users.find_one({'_id': ObjectId(appt['userId'])})
+        doctor = mongo.db.doctors.find_one({'_id': ObjectId(appt['doctorId'])})
 
-        if now <= appt_time <= five_mins_later:
-            send_notification(appt)
-
-def send_notification(appt):
-    user = mongo.db.users.find_one({'_id': ObjectId(appt['userId'])})
-    doctor = mongo.db.doctors.find_one({'_id': ObjectId(appt['doctorId'])})
-    
-    user_msg = f"Reminder: Your appointment with Dr. {doctor.get('name')} is at {appt['time']}."
-    doctor_msg = f"Reminder: You have an appointment with {user.get('name')} at {appt['time']}."
-
-    # Replace with actual push/email/sms service
-    print("Notify User:", user_msg)
-    print("Notify Doctor:", doctor_msg)
+        send_fcm(user.get('deviceToken'), "Appointment Reminder",
+                 f"Your appointment with Dr. {doctor['name']} is at {appt['time']}")
+        send_fcm(doctor.get('deviceToken'), "Appointment Reminder",
+                 f"You have an appointment with {user['name']} at {appt['time']}")
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(check_upcoming_appointments, 'interval', minutes=1)
 scheduler.start()
+
+@app.route('/api/start-call', methods=['POST'])
+def start_call():
+    data = request.json
+    channel_name = data['channelName']
+    uid = 0
+    expire_time = int(time.time()) + 300
+
+    token = RtcTokenBuilder.buildTokenWithUid(
+        AGORA_APP_ID, AGORA_APP_CERTIFICATE,
+        channel_name, uid, 1, expire_time
+    )
+
+    # Send push notification to user
+    target_token = data['targetFCMToken']
+    messaging.send(messaging.Message(
+        notification=messaging.Notification(
+            title='Incoming Video Call',
+            body='Doctor is calling you now.',
+        ),
+        data={
+            'token': token,
+            'channelName': channel_name,
+        },
+        token=target_token,
+    ))
+
+    return jsonify({'success': True, 'token': token})
+
+@app.route('/api/chat/channel/<channel>', methods=['GET'])
+def get_chat_by_channel(channel):
+    chat = mongo.db.chats.find_one({'channel': channel})
+    if not chat:
+        return jsonify({'success': False, 'message': 'Chat not found'}), 404
+    chat['_id'] = str(chat['_id'])
+    return jsonify({'success': True, 'chat': chat}), 200
+
+@app.route('/api/chat/<chat_id>/messages', methods=['POST'])
+def send_message(chat_id):
+    try:
+        data = request.get_json()
+        sender = data.get('sender')
+        content = data.get('content')
+
+        if not sender or not content:
+            return jsonify({'success': False, 'message': 'Sender and content are required'}), 400
+
+        chat = mongo.db.chats.find_one({'_id': ObjectId(chat_id)})
+        if not chat:
+            return jsonify({'success': False, 'message': 'Chat not found'}), 404
+
+        message = {
+            'sender': sender,
+            'content': content,
+            'timestamp': datetime.utcnow().isoformat()
+        }
+
+        mongo.db.chats.update_one(
+            {'_id': ObjectId(chat_id)},
+            {
+                '$push': {'messages': message},
+                '$set': {'updated_at': datetime.utcnow()}
+            }
+        )
+
+        return jsonify({'success': True, 'message': 'Message sent'}), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error sending message: {str(e)}'}), 500
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

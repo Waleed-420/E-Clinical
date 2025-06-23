@@ -1,13 +1,13 @@
-import 'package:e_clinical/screens/scan_photo_page.dart';
-import 'package:e_clinical/screens/user_prescription_screen.dart';
+import 'scan_photo_page.dart';
+import 'user_prescription_screen.dart';
 import 'package:flutter/material.dart';
-import './book_appointment.dart';
-import './user_reports.dart';
-import './user_appointments.dart';
-import './user_settings.dart';
-import './upload_pdf_screen.dart';
-import './book_test_screen.dart';
-import './past_reports_screen.dart';
+import 'book_appointment.dart';
+import 'user_reports.dart';
+import 'user_appointments.dart';
+import 'user_settings.dart';
+import 'upload_pdf_screen.dart';
+import 'book_test_screen.dart';
+import 'past_reports_screen.dart';
 import './book_appointment_splashscreen.dart';
 
 class UserHomePage extends StatelessWidget {
@@ -119,7 +119,7 @@ class UserHomePage extends StatelessWidget {
                       colorScheme.secondary,
                       () => _navigateTo(
                         context,
-                        BookAppointmentSplashScreen(user: user),
+                        BookAppointmentScreen(user: user),
                       ),
                     ),
                     _buildActionCard(

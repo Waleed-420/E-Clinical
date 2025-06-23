@@ -1,8 +1,7 @@
-import 'package:e_clinical/screens/user_appointments.dart';
+import 'user_appointments.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'doctor_detail.dart';
 import 'doctor_license_upload.dart';
 import 'doctor_schedule_setup.dart';
 import 'doctor_specialization.dart';
@@ -238,7 +237,7 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
                             MaterialPageRoute(
                               builder: (context) => DoctorScheduleSetup(
                                 user: widget.user,
-                                name: name,
+                                name: widget.user['name'],
                                 specialization: specialization,
                               ),
                             ),

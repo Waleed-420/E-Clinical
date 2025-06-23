@@ -1,6 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
+import 'package:e_clinical/screens/chat_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import 'video_call_screen.dart';
 
 class UserAppointments extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -11,13 +15,24 @@ class UserAppointments extends StatefulWidget {
 }
 
 class _UserAppointmentsState extends State<UserAppointments> {
-  List appointments = [];
+  List<Map<String, dynamic>> appointments = [];
   bool isLoading = true;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
     fetchAppointments();
+    // rebuild every minute so the "now" for enabling video-call stays up to date
+    _timer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   Future<void> fetchAppointments() async {
@@ -26,31 +41,78 @@ class _UserAppointmentsState extends State<UserAppointments> {
         Uri.parse(
           'http://192.168.10.10:5000/api/user/${widget.user['_id']}/appointments',
         ),
+        Uri.parse(
+          'http://192.168.1.8:5000/api/user/${widget.user['_id']}/appointments',
+        ),
       );
 
       if (response.statusCode == 200) {
-        final json = jsonDecode(response.body);
-        if (json['success']) {
+        final jsonBody = jsonDecode(response.body);
+        if (jsonBody['success'] == true) {
+          final List raw = jsonBody['appointments'] as List;
           setState(() {
-            appointments = json['appointments'];
+            // ensure we have a List<Map<String,dynamic>>
+            appointments = raw.cast<Map<String, dynamic>>();
             isLoading = false;
           });
+        } else {
+          setState(() {
+            isLoading = false;
+          });
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                jsonBody['message'] ?? 'Failed to load appointments',
+              ),
+            ),
+          );
         }
       } else {
         setState(() => isLoading = false);
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to load appointments')),
         );
       }
     } catch (e) {
       setState(() => isLoading = false);
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
-  // Feature for General Users
+  Future<void> initiateVideoCall(Map<String, dynamic> appointment) async {
+    final res = await http.post(
+      Uri.parse('http://192.168.1.8:5000/api/start-call'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'channelName': appointment['_id'],
+        'targetFCMToken': appointment['otherFcmToken'],
+      }),
+    );
+    final data = jsonDecode(res.body);
+    if (!mounted) return;
+    if (data['success'] == true) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => VideoCallScreen(
+            token: data['token'],
+            channelName: appointment['_id'],
+            isCaller: true,
+          ),
+        ),
+      );
+    } else if (data['message'] != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(data['message'])));
+    }
+  }
+
   Widget _buildUserFeatures(
     BuildContext context,
     Map<String, dynamic> appointment,
@@ -68,16 +130,17 @@ class _UserAppointmentsState extends State<UserAppointments> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            _buildFeatureButton(
-              context,
-              Icons.chat,
-              'Chat',
-              Colors.blue,
-              () => _showFeatureDialog(
+            _buildFeatureButton(context, Icons.chat, 'Chat', Colors.blue, () {
+              Navigator.push(
                 context,
-                'Chat with ${appointment['otherName']}',
-              ),
-            ),
+                MaterialPageRoute(
+                  builder: (context) => ChatScreen(
+                    channel: appointment['doctorId'] + appointment['userId'],
+                    currentUser: widget.user,
+                  ),
+                ),
+              );
+            }),
             _buildFeatureButton(
               context,
               Icons.medical_services,
@@ -111,11 +174,17 @@ class _UserAppointmentsState extends State<UserAppointments> {
     );
   }
 
-  // Feature for Doctors
   Widget _buildDoctorFeatures(
     BuildContext context,
     Map<String, dynamic> appointment,
   ) {
+    final now = DateTime.now();
+    final scheduled = DateFormat(
+      'yyyy-MM-dd HH:mm',
+    ).parse('${appointment['date']} ${appointment['time']}');
+    final videoEnabled =
+        now.isAtSameMomentAs(scheduled) || now.isAfter(scheduled);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -134,9 +203,14 @@ class _UserAppointmentsState extends State<UserAppointments> {
               Icons.chat,
               'Chat',
               Colors.blue,
-              () => _showFeatureDialog(
+              () => Navigator.push(
                 context,
-                'Chat with ${appointment['otherName']}',
+                MaterialPageRoute(
+                  builder: (context) => ChatScreen(
+                    channel: appointment['doctorId'] + appointment['userId'],
+                    currentUser: widget.user,
+                  ),
+                ),
               ),
             ),
             _buildFeatureButton(
@@ -144,10 +218,7 @@ class _UserAppointmentsState extends State<UserAppointments> {
               Icons.video_call,
               'Video Call',
               Colors.purple,
-              () => _showFeatureDialog(
-                context,
-                'Start video consultation with ${appointment['otherName']}',
-              ),
+              videoEnabled ? () => initiateVideoCall(appointment) : null,
             ),
             _buildFeatureButton(
               context,
@@ -180,18 +251,19 @@ class _UserAppointmentsState extends State<UserAppointments> {
     IconData icon,
     String label,
     Color color,
-    VoidCallback onPressed,
+    VoidCallback? onPressed,
   ) {
+    final background = onPressed != null
+        ? color
+        : color.withAlpha((0.5 * 255).round());
     return ElevatedButton.icon(
       icon: Icon(icon, size: 18),
       label: Text(label),
-      onPressed: () {},
-
+      onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         foregroundColor: Colors.white,
-        backgroundColor: color,
+        backgroundColor: background,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
     );
@@ -200,7 +272,7 @@ class _UserAppointmentsState extends State<UserAppointments> {
   void _showFeatureDialog(BuildContext context, String message) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (_) => AlertDialog(
         title: const Text('Feature Preview'),
         content: Text(message),
         actions: [
@@ -220,69 +292,56 @@ class _UserAppointmentsState extends State<UserAppointments> {
     double rating = 0;
     showDialog(
       context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Text('Rate ${appointment['otherName']}'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('How would you rate your experience?'),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(5, (index) {
-                      return IconButton(
-                        icon: Icon(
-                          index < rating ? Icons.star : Icons.star_border,
-                          color: Colors.amber,
-                          size: 32,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            rating = index + 1.0;
-                          });
-                        },
-                      );
-                    }),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Selected: ${rating.toInt()} star${rating == 1 ? '' : 's'}',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                ],
+      builder: (_) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text('Rate ${appointment['otherName']}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('How would you rate your experience?'),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (i) {
+                  return IconButton(
+                    icon: Icon(
+                      i < rating ? Icons.star : Icons.star_border,
+                      size: 32,
+                      color: Colors.amber,
+                    ),
+                    onPressed: () => setState(() => rating = i + 1.0),
+                  );
+                }),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.amber,
+              const SizedBox(height: 16),
+              Text('Selected: ${rating.toInt()} star${rating == 1 ? '' : 's'}'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Thanks for rating ${appointment['otherName']} with $rating stars!',
+                    ),
                   ),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Thanks for rating ${appointment['otherName']} with $rating stars!',
-                        ),
-                      ),
-                    );
-                    Navigator.pop(context);
-                  },
-                  child: const Text(
-                    'Submit Rating',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
+                );
+                Navigator.pop(context);
+              },
+              child: const Text(
+                'Submit Rating',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -305,7 +364,7 @@ class _UserAppointmentsState extends State<UserAppointments> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
-    final isDoctor = widget.user['role']?.toLowerCase() == 'doctor';
+    final isDoctor = widget.user['role']?.toString().toLowerCase() == 'doctor';
 
     return Scaffold(
       appBar: AppBar(
@@ -330,20 +389,26 @@ class _UserAppointmentsState extends State<UserAppointments> {
                   Icon(
                     Icons.calendar_today_outlined,
                     size: 64,
-                    color: theme.colorScheme.primary.withOpacity(0.3),
+                    color: theme.colorScheme.primary.withAlpha(
+                      (0.3 * 255).round(),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     'No Appointments Found',
                     style: theme.textTheme.titleMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      color: theme.colorScheme.onSurface.withAlpha(
+                        (0.6 * 255).round(),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'You currently have no upcoming appointments',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.4),
+                      color: theme.colorScheme.onSurface.withAlpha(
+                        (0.4 * 255).round(),
+                      ),
                     ),
                   ),
                 ],
@@ -354,8 +419,8 @@ class _UserAppointmentsState extends State<UserAppointments> {
               child: ListView.builder(
                 padding: const EdgeInsets.all(16),
                 itemCount: appointments.length,
-                itemBuilder: (context, index) {
-                  final appointment = appointments[index];
+                itemBuilder: (context, i) {
+                  final appt = appointments[i];
                   return Card(
                     elevation: 2,
                     margin: const EdgeInsets.only(bottom: 16),
@@ -373,7 +438,7 @@ class _UserAppointmentsState extends State<UserAppointments> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  appointment['otherName'] ?? 'Unknown',
+                                  appt['otherName'] ?? 'Unknown',
                                   style: theme.textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -386,15 +451,17 @@ class _UserAppointmentsState extends State<UserAppointments> {
                                 ),
                                 decoration: BoxDecoration(
                                   color: _getStatusColor(
-                                    appointment['status'] ?? '',
-                                  ).withOpacity(0.2),
+                                    appt['status'] ?? '',
+                                  ).withAlpha((0.2 * 255).round()),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(
-                                  appointment['status']?.toUpperCase() ?? '',
+                                  (appt['status'] ?? '')
+                                      .toString()
+                                      .toUpperCase(),
                                   style: TextStyle(
                                     color: _getStatusColor(
-                                      appointment['status'] ?? '',
+                                      appt['status'] ?? '',
                                     ),
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
@@ -413,7 +480,7 @@ class _UserAppointmentsState extends State<UserAppointments> {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                appointment['date'] ?? 'No date specified',
+                                appt['date'] ?? 'No date specified',
                                 style: theme.textTheme.bodyMedium,
                               ),
                             ],
@@ -428,12 +495,13 @@ class _UserAppointmentsState extends State<UserAppointments> {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                appointment['time'] ?? 'No time specified',
+                                appt['time'] ?? 'No time specified',
                                 style: theme.textTheme.bodyMedium,
                               ),
                             ],
                           ),
-                          if (appointment['notes']?.isNotEmpty ?? false) ...[
+                          if ((appt['notes'] as String?)?.isNotEmpty ??
+                              false) ...[
                             const SizedBox(height: 8),
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -446,16 +514,17 @@ class _UserAppointmentsState extends State<UserAppointments> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    appointment['notes'] ?? '',
+                                    appt['notes']!,
                                     style: theme.textTheme.bodyMedium,
                                   ),
                                 ),
                               ],
                             ),
                           ],
+                          const SizedBox(height: 8),
                           isDoctor
-                              ? _buildDoctorFeatures(context, appointment)
-                              : _buildUserFeatures(context, appointment),
+                              ? _buildDoctorFeatures(context, appt)
+                              : _buildUserFeatures(context, appt),
                         ],
                       ),
                     ),
