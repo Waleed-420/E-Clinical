@@ -41,9 +41,6 @@ class _UserAppointmentsState extends State<UserAppointments> {
         Uri.parse(
           'http://192.168.10.10:5000/api/user/${widget.user['_id']}/appointments',
         ),
-        Uri.parse(
-          'http://192.168.1.8:5000/api/user/${widget.user['_id']}/appointments',
-        ),
       );
 
       if (response.statusCode == 200) {
