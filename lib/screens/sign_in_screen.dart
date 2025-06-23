@@ -1,7 +1,9 @@
+import 'package:e_clinical/screens/doctor_dashboard.dart';
+import 'package:e_clinical/screens/laboratory_home_page.dart';
+
 import 'sign_up_screen.dart';
 import 'user_home_page.dart';
-import 'doctor_home_page.dart';
-import 'laboratory_home_page.dart';
+import 'doctor_license_upload.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -26,7 +28,7 @@ class _SignInScreenState extends State<SignInScreen> {
   Future<void> saveToken(String userId, bool isDoctor) async {
     String? token = await FirebaseMessaging.instance.getToken();
     await http.post(
-      Uri.parse('http://192.168.1.3:5000/api/save-token'),
+      Uri.parse('http://192.168.1.8:5000/api/save-token'),
       headers: {'Content-Type': 'application/json'},
       body: json.encode({
         'userId': userId,
@@ -40,7 +42,7 @@ class _SignInScreenState extends State<SignInScreen> {
     setState(() => _isLoading = true);
     try {
       final response = await http.post(
-        Uri.parse("http://192.168.1.3:5000/api/signin"),
+        Uri.parse("http://192.168.1.8:5000/api/signin"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": _emailController.text.trim(),
@@ -68,22 +70,42 @@ class _SignInScreenState extends State<SignInScreen> {
           ),
         );
 
-        Widget home;
         if (role == 'doctor') {
-          home = DoctorHomePage(user: user);
+          // Check if doctor has completed first-time setup
+          bool isSetupComplete = user['isSetupComplete'] ?? false;
+          
+          if (!isSetupComplete) {
+            // First-time setup flow for doctors
+            Future.delayed(Duration(milliseconds: 500), () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => DoctorLicenseUpload(user: user)),
+              );
+            });
+          } else {
+            // Regular login flow for doctors
+            Future.delayed(Duration(milliseconds: 500), () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => DoctorDashboard(user: user)),
+              );
+            });
+          }
         } else if (role == 'laboratory') {
-          home = LaboratoryHomePage(user: user);
+          Future.delayed(Duration(milliseconds: 500), () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => LaboratoryHomePage(user: user)),
+            );
+          });
         } else {
-          home = UserHomePage(user: user);
+          Future.delayed(Duration(milliseconds: 500), () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => UserHomePage(user: user)),
+            );
+          });
         }
-
-        Future.delayed(Duration(milliseconds: 500), () {
-          Navigator.pushReplacement(
-            // ignore: use_build_context_synchronously
-            context,
-            MaterialPageRoute(builder: (context) => home),
-          );
-        });
       } else {
         // ignore: use_build_context_synchronously
         ScaffoldMessenger.of(context).showSnackBar(

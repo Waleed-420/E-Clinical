@@ -367,6 +367,18 @@ def save_doctor_schedule():
         upsert=True
     )
 
+    mongo.db.users.update_one(
+        {'_id': ObjectId(doctor_id)},
+        {'$set': {
+            'name': name,
+            'schedule': schedule,
+            'specialization': specialization,
+            'verified': True,
+            'updated_at': datetime.utcnow()
+        }},
+        upsert=True
+    )
+
     return jsonify({'success': True, 'message': 'Schedule saved'})
 
 # Appointment endpoints
@@ -377,17 +389,17 @@ def get_doctors():
     if specialization:
         query['specialization'] = specialization
     
-    doctors = list(mongo.db.doctors.find(query, {
+    users = list(mongo.db.users.find(query, {
         '_id': 1,
         'name': 1,
         'specialization': 1,
         'schedule': 1
     }))
     
-    for doc in doctors:
+    for doc in users:
         doc['_id'] = str(doc['_id'])
     
-    return jsonify({'success': True, 'doctors': doctors})
+    return jsonify({'success': True, 'doctors': users})
 
 @app.route('/api/doctor/<doctor_id>/specialization/slots', methods=['GET'])
 def get_available_slots(doctor_id):
@@ -543,7 +555,7 @@ def get_doctor_specialization(doctor_id):
 
     if not doctor:
         return jsonify({'success': False, 'message': 'Doctor not found'}), 404
-
+    
     return jsonify({
         'success': True,
         'specialization': doctor.get('specialization', None)
@@ -580,7 +592,7 @@ def update_doctor_specialization(doctor_id):
         }}
     )
 
-    # Also ensure it's updated in doctors collection if exists
+    # Update in doctors collection (secondary)
     mongo.db.doctors.update_one(
         {'_id': ObjectId(doctor_id)},
         {'$set': {
@@ -826,7 +838,7 @@ def start_call():
 
 if __name__ == '__main__':
     app.run(
-        host='192.168.1.3',
+        host='192.168.1.8',
         port=5000,
         debug=True
     )
