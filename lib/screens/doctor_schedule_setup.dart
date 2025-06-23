@@ -17,7 +17,7 @@ class DoctorScheduleSetup extends StatefulWidget {
     super.key,
     required this.user,
     required this.specialization,
-    this.name = 'Doctor'
+    this.name = 'Doctor',
   });
 
   @override
@@ -35,51 +35,53 @@ class _DoctorScheduleSetupState extends State<DoctorScheduleSetup> {
     await showDialog(
       context: context,
       builder: (context) {
-        return StatefulBuilder(builder: (context, setDialogState) {
-          return AlertDialog(
-            title: Text("Select Time Slot for ${_getWeekdayName(weekday)}"),
-            content: SizedBox(
-              height: 300,
-              width: MediaQuery.of(context).size.width * 0.8,
-              child: TimeRange(
-                fromTitle: const Text('From'),
-                toTitle: const Text('To'),
-                textStyle: const TextStyle(color: Colors.black),
-                activeTextStyle: const TextStyle(color: Colors.white),
-                borderColor: Theme.of(context).primaryColor,
-                backgroundColor: Colors.transparent,
-                activeBackgroundColor: Theme.of(context).primaryColor,
-                firstTime: const TimeOfDay(hour: 8, minute: 0),
-                lastTime: const TimeOfDay(hour: 20, minute: 0),
-                timeStep: 30,
-                timeBlock: 60,
-                onRangeCompleted: (range) {
-                  setDialogState(() {
-                    selectedRange = range;
-                  });
-                },
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text("Select Time Slot for ${_getWeekdayName(weekday)}"),
+              content: SizedBox(
+                height: 300,
+                width: MediaQuery.of(context).size.width * 0.8,
+                child: TimeRange(
+                  fromTitle: const Text('From'),
+                  toTitle: const Text('To'),
+                  textStyle: const TextStyle(color: Colors.black),
+                  activeTextStyle: const TextStyle(color: Colors.white),
+                  borderColor: Theme.of(context).primaryColor,
+                  backgroundColor: Colors.transparent,
+                  activeBackgroundColor: Theme.of(context).primaryColor,
+                  firstTime: const TimeOfDay(hour: 8, minute: 0),
+                  lastTime: const TimeOfDay(hour: 22, minute: 0),
+                  timeStep: 30,
+                  timeBlock: 60,
+                  onRangeCompleted: (range) {
+                    setDialogState(() {
+                      selectedRange = range;
+                    });
+                  },
+                ),
               ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Cancel"),
-              ),
-              ElevatedButton(
-                onPressed: selectedRange == null
-                    ? null
-                    : () {
-                        setState(() {
-                          _weeklySchedule[weekday] ??= [];
-                          _weeklySchedule[weekday]!.add(selectedRange!);
-                        });
-                        Navigator.pop(context);
-                      },
-                child: const Text("Add Slot"),
-              ),
-            ],
-          );
-        });
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: selectedRange == null
+                      ? null
+                      : () {
+                          setState(() {
+                            _weeklySchedule[weekday] ??= [];
+                            _weeklySchedule[weekday]!.add(selectedRange!);
+                          });
+                          Navigator.pop(context);
+                        },
+                  child: const Text("Add Slot"),
+                ),
+              ],
+            );
+          },
+        );
       },
     );
   }
@@ -102,21 +104,27 @@ class _DoctorScheduleSetupState extends State<DoctorScheduleSetup> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.4:5000/api/doctor/schedule'),
+        Uri.parse('http://192.168.10.10:5000/api/doctor/schedule'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'doctorId': widget.user['_id'].toString(),
           'name': widget.name,
           'specialization': widget.specialization,
-          'schedule': _weeklySchedule.map((key, value) => MapEntry(
-                key.toString(),
-                value
-                    .map((tr) => {
-                          'start': '${tr.start.hour}:${tr.start.minute.toString().padLeft(2, '0')}',
-                          'end': '${tr.end.hour}:${tr.end.minute.toString().padLeft(2, '0')}',
-                        })
-                    .toList(),
-              )),
+          'schedule': _weeklySchedule.map(
+            (key, value) => MapEntry(
+              key.toString(),
+              value
+                  .map(
+                    (tr) => {
+                      'start':
+                          '${tr.start.hour}:${tr.start.minute.toString().padLeft(2, '0')}',
+                      'end':
+                          '${tr.end.hour}:${tr.end.minute.toString().padLeft(2, '0')}',
+                    },
+                  )
+                  .toList(),
+            ),
+          ),
         }),
       );
 
@@ -133,14 +141,16 @@ class _DoctorScheduleSetupState extends State<DoctorScheduleSetup> {
       } else {
         // ignore: use_build_context_synchronously
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message'] ?? 'Failed to save schedule')),
+          SnackBar(
+            content: Text(result['message'] ?? 'Failed to save schedule'),
+          ),
         );
       }
     } catch (e) {
       // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
     } finally {
       setState(() {
         _isSubmitting = false;
@@ -150,7 +160,9 @@ class _DoctorScheduleSetupState extends State<DoctorScheduleSetup> {
 
   Future<void> fetchDoctorSchedule() async {
     final doctorId = widget.user['_id'];
-    final url = Uri.parse('http://192.168.1.4:5000/api/doctor/$doctorId/schedule');
+    final url = Uri.parse(
+      'http://192.168.10.10:5000/api/doctor/$doctorId/schedule',
+    );
 
     try {
       final response = await http.get(url);
@@ -211,10 +223,7 @@ class _DoctorScheduleSetupState extends State<DoctorScheduleSetup> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Set Your Schedule'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Set Your Schedule'), elevation: 0),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -222,7 +231,9 @@ class _DoctorScheduleSetupState extends State<DoctorScheduleSetup> {
           children: [
             Text(
               'Weekly Availability',
-              style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -267,22 +278,27 @@ class _DoctorScheduleSetupState extends State<DoctorScheduleSetup> {
                                 style: TextStyle(color: Colors.grey),
                               ),
                             ),
-                          ...slots.map((slot) => ListTile(
-                                title: Text(
-                                  '${slot.start.format(context)} - ${slot.end.format(context)}',
+                          ...slots.map(
+                            (slot) => ListTile(
+                              title: Text(
+                                '${slot.start.format(context)} - ${slot.end.format(context)}',
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
                                 ),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.delete, color: Colors.red),
-                                  onPressed: () {
-                                    setState(() {
-                                      _weeklySchedule[weekday]!.remove(slot);
-                                      if (_weeklySchedule[weekday]!.isEmpty) {
-                                        _weeklySchedule.remove(weekday);
-                                      }
-                                    });
-                                  },
-                                ),
-                              )),
+                                onPressed: () {
+                                  setState(() {
+                                    _weeklySchedule[weekday]!.remove(slot);
+                                    if (_weeklySchedule[weekday]!.isEmpty) {
+                                      _weeklySchedule.remove(weekday);
+                                    }
+                                  });
+                                },
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -302,7 +318,10 @@ class _DoctorScheduleSetupState extends State<DoctorScheduleSetup> {
                     ? const SizedBox(
                         height: 24,
                         width: 24,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
                       )
                     : const Text('Save Schedule'),
               ),

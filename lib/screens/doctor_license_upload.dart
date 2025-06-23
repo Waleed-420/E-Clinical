@@ -49,10 +49,12 @@ class _DoctorLicenseUploadState extends State<DoctorLicenseUpload> {
     try {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('http://192.168.1.4:5000/api/upload-license'),
+        Uri.parse('http://192.168.10.10:5000/api/upload-license'),
       );
 
-      request.files.add(await http.MultipartFile.fromPath('license', _licenseFile!.path));
+      request.files.add(
+        await http.MultipartFile.fromPath('license', _licenseFile!.path),
+      );
 
       request.fields['userId'] = widget.user['_id'].toString(); // ensure string
       request.fields['email'] = widget.user['email'];
@@ -90,10 +92,7 @@ class _DoctorLicenseUploadState extends State<DoctorLicenseUpload> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Doctor Verification'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Doctor Verification'), elevation: 0),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -101,7 +100,9 @@ class _DoctorLicenseUploadState extends State<DoctorLicenseUpload> {
           children: [
             Text(
               'License Verification',
-              style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 16),
             Text(
@@ -121,7 +122,11 @@ class _DoctorLicenseUploadState extends State<DoctorLicenseUpload> {
                     ),
                     child: _licenseFile != null
                         ? Image.file(_licenseFile!, fit: BoxFit.cover)
-                        : const Icon(Icons.upload_file, size: 50, color: Colors.grey),
+                        : const Icon(
+                            Icons.upload_file,
+                            size: 50,
+                            color: Colors.grey,
+                          ),
                   ),
                   const SizedBox(height: 20),
                   ElevatedButton.icon(
@@ -129,7 +134,10 @@ class _DoctorLicenseUploadState extends State<DoctorLicenseUpload> {
                     icon: const Icon(Icons.upload),
                     label: const Text('Select License'),
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
                     ),
                   ),
                 ],
@@ -148,12 +156,17 @@ class _DoctorLicenseUploadState extends State<DoctorLicenseUpload> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _isUploading ? null : _uploadLicense,
-                style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
                 child: _isUploading
                     ? const SizedBox(
                         height: 24,
                         width: 24,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
                       )
                     : const Text('Submit for Verification'),
               ),

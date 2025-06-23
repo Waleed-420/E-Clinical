@@ -26,7 +26,7 @@ class _SignInScreenState extends State<SignInScreen> {
     setState(() => _isLoading = true);
     try {
       final response = await http.post(
-        Uri.parse("http://192.168.1.4:5000/api/signin"),
+        Uri.parse("http://192.168.10.10:5000/api/signin"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": _emailController.text.trim(),
@@ -38,17 +38,21 @@ class _SignInScreenState extends State<SignInScreen> {
 
       if (response.statusCode == 200 && result["success"] == true) {
         final user = result["user"];
-        final String role = (user['role'] ?? 'General User').toString().toLowerCase();
+        final String role = (user['role'] ?? 'General User')
+            .toString()
+            .toLowerCase();
 
         if (kDebugMode) {
           print("User Role: $role");
         } // Debug log
 
         // ignore: use_build_context_synchronously
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text("Login Successful!"),
-          backgroundColor: Colors.green,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Login Successful!"),
+            backgroundColor: Colors.green,
+          ),
+        );
 
         Widget home;
         if (role == 'doctor') {
@@ -68,17 +72,21 @@ class _SignInScreenState extends State<SignInScreen> {
         });
       } else {
         // ignore: use_build_context_synchronously
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(result['message'] ?? "Login failed"),
-          backgroundColor: Colors.red,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? "Login failed"),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (e) {
       // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text("Error connecting to server."),
-        backgroundColor: Colors.red,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error connecting to server."),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
       setState(() => _isLoading = false);
     }
@@ -106,7 +114,9 @@ class _SignInScreenState extends State<SignInScreen> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
-                            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)],
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black26, blurRadius: 10),
+                            ],
                           ),
                           child: Form(
                             key: _formKey,
@@ -125,12 +135,22 @@ class _SignInScreenState extends State<SignInScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 30),
-                                _buildTextField('Email', _emailController, Icons.email),
+                                _buildTextField(
+                                  'Email',
+                                  _emailController,
+                                  Icons.email,
+                                ),
                                 const SizedBox(height: 16),
-                                _buildTextField('Password', _passwordController, Icons.lock, obscureText: true),
+                                _buildTextField(
+                                  'Password',
+                                  _passwordController,
+                                  Icons.lock,
+                                  obscureText: true,
+                                ),
                                 const SizedBox(height: 10),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Row(
                                       children: [
@@ -150,7 +170,12 @@ class _SignInScreenState extends State<SignInScreen> {
                                       onPressed: () {
                                         // Forgot password action
                                       },
-                                      child: Text('Forgot Password?', style: TextStyle(color: Color(0xFF15A196))),
+                                      child: Text(
+                                        'Forgot Password?',
+                                        style: TextStyle(
+                                          color: Color(0xFF15A196),
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -160,18 +185,26 @@ class _SignInScreenState extends State<SignInScreen> {
                                     onPressed: _isLoading
                                         ? null
                                         : () {
-                                            if (_formKey.currentState!.validate()) {
+                                            if (_formKey.currentState!
+                                                .validate()) {
                                               _signIn();
                                             }
                                           },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color(0xFF15A196),
-                                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 40,
+                                        vertical: 12,
+                                      ),
                                       foregroundColor: Colors.white,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
                                     ),
                                     child: _isLoading
-                                        ? CircularProgressIndicator(color: Colors.white)
+                                        ? CircularProgressIndicator(
+                                            color: Colors.white,
+                                          )
                                         : const Text('Sign In'),
                                   ),
                                 ),
@@ -181,14 +214,26 @@ class _SignInScreenState extends State<SignInScreen> {
                                     onPressed: () {
                                       Navigator.push(
                                         context,
-                                        MaterialPageRoute(builder: (context) => SignUpScreen()),
+                                        MaterialPageRoute(
+                                          builder: (context) => SignUpScreen(),
+                                        ),
                                       );
                                     },
                                     child: RichText(
                                       text: const TextSpan(
                                         children: [
-                                          TextSpan(text: "Don't have an account? ", style: TextStyle(color: Colors.grey)),
-                                          TextSpan(text: "Sign Up", style: TextStyle(color: Color(0xFF15A196))),
+                                          TextSpan(
+                                            text: "Don't have an account? ",
+                                            style: TextStyle(
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                          TextSpan(
+                                            text: "Sign Up",
+                                            style: TextStyle(
+                                              color: Color(0xFF15A196),
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -203,7 +248,10 @@ class _SignInScreenState extends State<SignInScreen> {
                           child: SizedBox(
                             height: 250,
                             width: 250,
-                            child: Image.asset('assets/images/doctor_top.png', fit: BoxFit.contain),
+                            child: Image.asset(
+                              'assets/images/doctor_top.png',
+                              fit: BoxFit.contain,
+                            ),
                           ),
                         ),
                       ],
@@ -218,8 +266,12 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  Widget _buildTextField(String hint, TextEditingController controller, IconData icon,
-      {bool obscureText = false}) {
+  Widget _buildTextField(
+    String hint,
+    TextEditingController controller,
+    IconData icon, {
+    bool obscureText = false,
+  }) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16),

@@ -35,9 +35,9 @@ class _ScanPhotoPageState extends State<ScanPhotoPage> {
       }
     } catch (e) {
       // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to pick image: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to pick image: $e')));
     }
   }
 
@@ -50,7 +50,9 @@ class _ScanPhotoPageState extends State<ScanPhotoPage> {
     });
 
     try {
-      final uri = Uri.parse('http://192.168.1.4:5000/api/scan-medical-report');
+      final uri = Uri.parse(
+        'http://192.168.10.10:5000/api/scan-medical-report',
+      );
       final request = http.MultipartRequest('POST', uri);
 
       if (kIsWeb) {
@@ -91,9 +93,9 @@ class _ScanPhotoPageState extends State<ScanPhotoPage> {
       }
     } catch (e) {
       // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error scanning document: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error scanning document: $e')));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -145,7 +147,10 @@ class _ScanPhotoPageState extends State<ScanPhotoPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: const [
-                    Text('How to scan:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text(
+                      'How to scan:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     SizedBox(height: 8),
                     Text('1. Place your medical report on a flat surface'),
                     Text('2. Ensure good lighting'),
@@ -163,10 +168,21 @@ class _ScanPhotoPageState extends State<ScanPhotoPage> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: _image != null && !kIsWeb
-                  ? ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.file(_image!, fit: BoxFit.cover))
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(_image!, fit: BoxFit.cover),
+                    )
                   : _imageBytes != null && kIsWeb
-                      ? ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.memory(_imageBytes!, fit: BoxFit.cover))
-                      : const Center(child: Text('No image selected', style: TextStyle(color: Colors.grey))),
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.memory(_imageBytes!, fit: BoxFit.cover),
+                    )
+                  : const Center(
+                      child: Text(
+                        'No image selected',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
             ),
             const SizedBox(height: 20),
             Row(
@@ -186,13 +202,17 @@ class _ScanPhotoPageState extends State<ScanPhotoPage> {
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: (_image == null && _imageBytes == null) || _isLoading ? null : _scanDocument,
+              onPressed: (_image == null && _imageBytes == null) || _isLoading
+                  ? null
+                  : _scanDocument,
               style: ElevatedButton.styleFrom(
                 backgroundColor: colorScheme.primary,
                 foregroundColor: colorScheme.onPrimary,
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
-              child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Scan Document'),
+              child: _isLoading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text('Scan Document'),
             ),
             const SizedBox(height: 20),
             if (_scanResult != null)
@@ -203,17 +223,28 @@ class _ScanPhotoPageState extends State<ScanPhotoPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Medical Report', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                      Text(
+                        'Medical Report',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const SizedBox(height: 16),
-                      if (_scanResult!['structuredData']?['institute_name'] != null)
-                        Text("Hospital: ${_scanResult!['structuredData']['institute_name']}"),
+                      if (_scanResult!['structuredData']?['institute_name'] !=
+                          null)
+                        Text(
+                          "Hospital: ${_scanResult!['structuredData']['institute_name']}",
+                        ),
                       if (_scanResult!['structuredData']?['date'] != null)
                         Text("Date: ${_scanResult!['structuredData']['date']}"),
                       const SizedBox(height: 12),
                       Text('Test Results:', style: theme.textTheme.titleMedium),
                       const SizedBox(height: 8),
-                      if ((_scanResult!['structuredData']?['tests'] as List).isNotEmpty)
-                        _buildTestResultTable(_scanResult!['structuredData']['tests'])
+                      if ((_scanResult!['structuredData']?['tests'] as List)
+                          .isNotEmpty)
+                        _buildTestResultTable(
+                          _scanResult!['structuredData']['tests'],
+                        )
                       else
                         const Text('No test results found'),
                       const SizedBox(height: 16),
@@ -226,8 +257,11 @@ class _ScanPhotoPageState extends State<ScanPhotoPage> {
                               border: Border.all(color: Colors.grey[300]!),
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            child: SelectableText(_scanResult!['extractedText'] ?? 'No text extracted'),
-                          )
+                            child: SelectableText(
+                              _scanResult!['extractedText'] ??
+                                  'No text extracted',
+                            ),
+                          ),
                         ],
                       ),
                     ],

@@ -722,7 +722,7 @@ scheduler.start()
 
 if __name__ == '__main__':
     app.run(
-        host='192.168.1.4',
+        host='192.168.10.10',
         port=5000,
         debug=True
     )

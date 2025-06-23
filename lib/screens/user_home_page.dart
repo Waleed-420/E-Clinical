@@ -8,6 +8,7 @@ import './user_settings.dart';
 import './upload_pdf_screen.dart';
 import './book_test_screen.dart';
 import './past_reports_screen.dart';
+import './book_appointment_splashscreen.dart';
 
 class UserHomePage extends StatelessWidget {
   final Map<String, dynamic> user;
@@ -75,7 +76,8 @@ class UserHomePage extends StatelessWidget {
                               Icons.upload_file,
                               'Upload PDF',
                               colorScheme.secondary,
-                              () => _navigateTo(context, const UploadPdfScreen()),
+                              () =>
+                                  _navigateTo(context, const UploadPdfScreen()),
                             ),
                             _buildQuickAction(
                               context,
@@ -115,7 +117,10 @@ class UserHomePage extends StatelessWidget {
                       Icons.calendar_today,
                       'Book Appointment',
                       colorScheme.secondary,
-                      () => _navigateTo(context, BookAppointmentScreen(user: user)),
+                      () => _navigateTo(
+                        context,
+                        BookAppointmentSplashScreen(user: user),
+                      ),
                     ),
                     _buildActionCard(
                       context,
@@ -129,7 +134,8 @@ class UserHomePage extends StatelessWidget {
                       Icons.description,
                       'Prescription',
                       Colors.green,
-                      () => _navigateTo(context, const UserPrescriptionScreen()),
+                      () =>
+                          _navigateTo(context, const UserPrescriptionScreen()),
                     ),
                   ],
                 ),
@@ -139,7 +145,12 @@ class UserHomePage extends StatelessWidget {
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavBar(context, 0, colorScheme, isDarkMode),
+      bottomNavigationBar: _buildBottomNavBar(
+        context,
+        0,
+        colorScheme,
+        isDarkMode,
+      ),
     );
   }
 
@@ -169,9 +180,9 @@ class UserHomePage extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           title,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
         ),
       ],
     );
@@ -190,9 +201,7 @@ class UserHomePage extends StatelessWidget {
     return Card(
       elevation: 2,
       color: isDarkMode ? Colors.grey[850] : Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: InkWell(
         borderRadius: BorderRadius.circular(15),
         onTap: onTap,
@@ -214,9 +223,9 @@ class UserHomePage extends StatelessWidget {
               Text(
                 title,
                 style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.white : Colors.black87,
-                    ),
+                  fontWeight: FontWeight.bold,
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -241,7 +250,10 @@ class UserHomePage extends StatelessWidget {
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
         BottomNavigationBarItem(icon: Icon(Icons.assignment), label: 'Reports'),
-        BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Appointments'),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.calendar_today),
+          label: 'Appointments',
+        ),
         BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
       ],
       onTap: (index) {
