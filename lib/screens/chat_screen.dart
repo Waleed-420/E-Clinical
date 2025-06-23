@@ -7,11 +7,10 @@ class ChatScreen extends StatefulWidget {
   final String channel;
   final Map<String, dynamic> currentUser;
 
-
   const ChatScreen({
     super.key,
     required this.channel,
-    required this.currentUser
+    required this.currentUser,
   });
 
   @override
@@ -20,10 +19,7 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   String? _chatId;
-String? _userId;
-String? _doctorId;
-String? _appointmentId;
-final _messageController = TextEditingController();
+  final _messageController = TextEditingController();
   List<dynamic> _messages = [];
   bool _isLoading = true;
   String? _errorMessage;
@@ -31,96 +27,148 @@ final _messageController = TextEditingController();
   @override
   void initState() {
     super.initState();
+    _verifyChannelAndLoadMessages();
+  }
+
+  void _verifyChannelAndLoadMessages() {
+    if (widget.channel.length != 48) {
+      setState(() {
+        _errorMessage = 'Invalid chat channel format';
+        _isLoading = false;
+      });
+      return;
+    }
     _loadMessages();
   }
 
   Future<void> _loadMessages() async {
-  try {
-    final response = await http.get(
-      Uri.parse('http://192.168.1.8:5000/api/chat/channel/${widget.channel}'),
-    );
+    try {
+      print('Loading messages for channel: ${widget.channel}');
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      if (data['success']) {
-        final chat = data['chat'];
-        setState(() {
-          _messages = chat['messages'] ?? [];
-          _chatId = chat['_id'];
-          _userId = chat['userId'];
-          _doctorId = chat['doctorId'];
-          _appointmentId = chat['appointmentId'];
-          _isLoading = false;
-        });
+      final response = await http.get(
+        Uri.parse(
+          'http://192.168.10.10:5000/api/chat/channel/${widget.channel}',
+        ),
+      );
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success']) {
+          final chat = data['chat'];
+          setState(() {
+            _messages = chat['messages'] ?? [];
+            _chatId = chat['_id'];
+            _isLoading = false;
+            _errorMessage = null;
+          });
+        } else {
+          setState(() {
+            _errorMessage = data['message'] ?? 'Failed to load chat';
+            _isLoading = false;
+          });
+        }
+      } else if (response.statusCode == 404) {
+        await _createNewChat();
       } else {
         setState(() {
-          _errorMessage = 'Chat not found.';
+          _errorMessage = 'Server error: ${response.statusCode}';
           _isLoading = false;
         });
       }
-    } else {
+    } catch (e) {
       setState(() {
-        _errorMessage = 'Failed to load messages';
+        _errorMessage = 'Network error: ${e.toString()}';
         _isLoading = false;
       });
+      print('Error loading messages: $e');
     }
-  } catch (e) {
-    setState(() {
-      _errorMessage = 'Error loading messages: $e';
-      _isLoading = false;
-    });
   }
-}
+
+  Future<void> _createNewChat() async {
+    try {
+      print('Attempting to create new chat for channel: ${widget.channel}');
+
+      final response = await http.post(
+        Uri.parse(
+          'http://192.168.10.10:5000/api/chat/channel/${widget.channel}',
+        ),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        await _loadMessages();
+      } else {
+        setState(() {
+          _errorMessage = 'Failed to create chat';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Error creating chat: ${e.toString()}';
+        _isLoading = false;
+      });
+      print('Error creating chat: $e');
+    }
+  }
 
   Future<void> _sendMessage(String content) async {
-  if (content.trim().isEmpty || _chatId == null || _userId == null) return;
+    if (content.trim().isEmpty || _chatId == null) return;
 
-  try {
-    final response = await http.post(
-      Uri.parse('http://192.168.1.8:5000/api/chat/$_chatId/messages'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'sender': widget.currentUser['_id'],
-        'content': content,
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      setState(() {
-        _messages.add({
+    try {
+      final response = await http.post(
+        Uri.parse('http://192.168.10.10:5000/api/chat/$_chatId/messages'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
           'sender': widget.currentUser['_id'],
           'content': content,
-          'timestamp': DateTime.now().toIso8601String(),
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          _messages.add({
+            'sender': widget.currentUser['_id'],
+            'content': content,
+            'timestamp': DateTime.now().toIso8601String(),
+          });
+          _messageController.clear();
         });
-        _messageController.clear();
-      });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send message: ${response.statusCode}'),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to send message: ${e.toString()}')),
+      );
     }
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Failed to send message: $e')),
-    );
   }
-}
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Consultation Chat'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Consultation Chat')),
       body: Column(
         children: [
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
+                : _errorMessage != null
+                ? Center(child: Text(_errorMessage!))
                 : ListView.builder(
                     padding: const EdgeInsets.all(8),
                     itemCount: _messages.length,
                     itemBuilder: (context, index) {
                       final message = _messages[index];
-                      final isUserMessage = message['sender'] == _userId;
-
+                      final isUserMessage =
+                          message['sender'] == widget.currentUser['_id'];
 
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 4),
@@ -164,14 +212,6 @@ final _messageController = TextEditingController();
                     },
                   ),
           ),
-          if (_errorMessage != null)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                _errorMessage!,
-                style: const TextStyle(color: Colors.red),
-              ),
-            ),
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(

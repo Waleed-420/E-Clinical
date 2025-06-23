@@ -832,13 +832,31 @@ def start_call():
 
     return jsonify({'success': True, 'token': token})
 
-@app.route('/api/chat/channel/<channel>', methods=['GET'])
-def get_chat_by_channel(channel):
-    chat = mongo.db.chats.find_one({'channel': channel})
-    if not chat:
-        return jsonify({'success': False, 'message': 'Chat not found'}), 404
-    chat['_id'] = str(chat['_id'])
-    return jsonify({'success': True, 'chat': chat}), 200
+@app.route('/api/chat/channel/<channel>', methods=['GET', 'POST'])
+def handle_chat_channel(channel):
+    if request.method == 'GET':
+        chat = mongo.db.chats.find_one({'channel': channel})
+        if not chat:
+            return jsonify({'success': False, 'message': 'Chat not found'}), 404
+        chat['_id'] = str(chat['_id'])
+        return jsonify({'success': True, 'chat': chat}), 200
+
+    elif request.method == 'POST':
+        chat = mongo.db.chats.find_one({'channel': channel})
+        if chat:
+            chat['_id'] = str(chat['_id'])
+            return jsonify({'success': True, 'chat': chat}), 200
+
+        new_chat = {
+            'channel': channel,
+            'messages': [],
+            'created_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow()
+        }
+        result = mongo.db.chats.insert_one(new_chat)
+        new_chat['_id'] = str(result.inserted_id)
+        return jsonify({'success': True, 'chat': new_chat}), 200
+
 
 @app.route('/api/chat/<chat_id>/messages', methods=['POST'])
 def send_message(chat_id):

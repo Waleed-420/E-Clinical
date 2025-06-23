@@ -6,8 +6,8 @@ import 'package:time_range/time_range.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'doctor_dashboard.dart';
+import 'doctor_dashboard.dart';
 
-// ignore: must_be_immutable
 class DoctorScheduleSetup extends StatefulWidget {
   final Map<String, dynamic> user;
   final String specialization;
@@ -21,7 +21,6 @@ class DoctorScheduleSetup extends StatefulWidget {
   });
 
   @override
-  // ignore: library_private_types_in_public_api
   _DoctorScheduleSetupState createState() => _DoctorScheduleSetupState();
 }
 
@@ -131,15 +130,17 @@ class _DoctorScheduleSetupState extends State<DoctorScheduleSetup> {
       final result = json.decode(response.body);
 
       if (response.statusCode == 200 && result['success']) {
+        print('Schedule saved. Navigating to dashboard...');
+        if (!mounted) return;
         Navigator.pushReplacement(
-          // ignore: use_build_context_synchronously
           context,
           MaterialPageRoute(
             builder: (context) => DoctorDashboard(user: widget.user),
           ),
         );
       } else {
-        // ignore: use_build_context_synchronously
+        print('API failed: ${result['message']}');
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Failed to save schedule'),
@@ -147,14 +148,17 @@ class _DoctorScheduleSetupState extends State<DoctorScheduleSetup> {
         );
       }
     } catch (e) {
-      // ignore: use_build_context_synchronously
+      print('Error: $e');
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
     } finally {
-      setState(() {
-        _isSubmitting = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
     }
   }
 
@@ -201,14 +205,11 @@ class _DoctorScheduleSetupState extends State<DoctorScheduleSetup> {
           _weeklySchedule.addAll(tempSchedule);
         });
       } else {
-        if (kDebugMode) {
+        if (kDebugMode)
           print('Failed to fetch schedule: ${response.statusCode}');
-        }
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('Error fetching schedule: $e');
-      }
+      if (kDebugMode) print('Error fetching schedule: $e');
     }
   }
 
