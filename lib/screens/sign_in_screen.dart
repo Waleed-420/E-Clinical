@@ -27,6 +27,11 @@ class _SignInScreenState extends State<SignInScreen> {
 
   Future<void> saveToken(String userId, bool isDoctor) async {
     String? token = await FirebaseMessaging.instance.getToken();
+    
+    if (kDebugMode){
+      print("Token: $token");
+    }
+
     await http.post(
       Uri.parse('http://192.168.1.8:5000/api/save-token'),
       headers: {'Content-Type': 'application/json'},
@@ -42,7 +47,7 @@ class _SignInScreenState extends State<SignInScreen> {
     setState(() => _isLoading = true);
     try {
       final response = await http.post(
-        Uri.parse("http://192.168.10.10:5000/api/signin"),
+        Uri.parse("http://192.168.1.8:5000/api/signin"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": _emailController.text.trim(),

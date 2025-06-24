@@ -404,63 +404,62 @@ def get_doctors():
 @app.route('/api/doctor/<doctor_id>/specialization/slots', methods=['GET'])
 def get_available_slots(doctor_id):
     try:
-        # Validate date parameter
         date_str = request.args.get('date')
         if not date_str:
             return jsonify({'success': False, 'message': 'Date parameter is required'}), 400
-            
+
         try:
             date = datetime.strptime(date_str, '%Y-%m-%d')
         except ValueError:
             return jsonify({'success': False, 'message': 'Invalid date format. Use YYYY-MM-DD'}), 400
 
-        # Validate doctor_id
         if not ObjectId.is_valid(doctor_id):
             return jsonify({'success': False, 'message': 'Invalid doctor ID format'}), 400
 
-        # Get doctor's schedule
         doctor = mongo.db.doctors.find_one({'_id': ObjectId(doctor_id)})
         if not doctor:
             return jsonify({'success': False, 'message': 'Doctor not found'}), 404
 
-        # Get booked appointments
+        # Get booked times
         booked_appointments = list(mongo.db.appointments.find({
             'doctorId': doctor_id,
             'date': date_str,
             'status': {'$in': ['booked', 'confirmed']}
         }))
+        booked_times = {appt['time'] for appt in booked_appointments if 'time' in appt}
 
-        # Generate available slots
-        weekday = str(date.isoweekday())
+        # Collect schedule for the day
+        weekday = str(date.isoweekday())  # Monday=1
         schedule = doctor.get('schedule', {}).get(weekday, [])
-        available_slots = []
-        
+
+        # Use a set to avoid duplicates
+        available_slots_set = set()
+
         for slot in schedule:
             try:
                 start_time = datetime.strptime(slot['start'], '%H:%M').time()
                 end_time = datetime.strptime(slot['end'], '%H:%M').time()
-                
-                current_time = start_time
-                while current_time < end_time:
-                    slot_str = current_time.strftime('%H:%M')
-                    if not any(appt['time'] == slot_str for appt in booked_appointments):
-                        available_slots.append({
-    'start': slot['start'],
-    'end': slot['end'],
-    'available': slot_str not in booked_times
-})
+                current = datetime.combine(date, start_time)
+                end = datetime.combine(date, end_time)
 
-                    current_time = (datetime.combine(date, current_time) + timedelta(minutes=30)).time()
+                while current < end:
+                    slot_str = current.strftime('%H:%M')
+                    if slot_str not in booked_times:
+                        available_slots_set.add(slot_str)
+                    current += timedelta(minutes=30)
             except Exception as e:
                 app.logger.error(f"Error processing slot: {str(e)}")
                 continue
+
+        # Convert set to sorted list
+        available_slots = sorted(available_slots_set)
 
         return jsonify({
             'success': True,
             'slots': available_slots,
             'date': date_str,
             'doctor_id': doctor_id
-        })
+        }), 200
 
     except Exception as e:
         app.logger.error(f"Error in get_available_slots: {str(e)}\n{traceback.format_exc()}")
@@ -469,7 +468,6 @@ def get_available_slots(doctor_id):
             'message': 'An error occurred while fetching available slots',
             'error': str(e)
         }), 500
-
 
 @app.route('/api/appointments', methods=['POST'])
 def book_appointment():
@@ -716,9 +714,17 @@ def get_user_appointments(user_id):
         appointments = []
 
     for appt in appointments:
-        appt['_id'] = str(appt['_id'])
+        try:
+            appointment_datetime = datetime.strptime(
+                f"{appt['date']} {appt['time']}", "%Y-%m-%d %H:%M"
+            )
+            if appointment_datetime > now:
+                appt['_id'] = str(appt['_id'])  # Convert ObjectId to string
+                upcoming_appointments.append(appt)
+        except Exception:
+            continue  # Skip malformed datetime entries
 
-    return jsonify({'success': True, 'appointments': appointments}), 200
+    return jsonify({'success': True, 'appointments': upcoming_appointments}), 200
 
 
 # from apscheduler.schedulers.background import BackgroundScheduler
@@ -763,6 +769,8 @@ def save_token():
     is_doctor = data.get('isDoctor')
     token = data.get('deviceToken')
 
+    print('token', token)
+
     collection = mongo.db.doctors if is_doctor else mongo.db.users
     collection.update_one(
         {'_id': ObjectId(user_id)},
@@ -780,26 +788,36 @@ def send_fcm(token, title, body):
     messaging.send(message)
 
 def check_upcoming_appointments():
-    now = datetime.now(pytz.utc)
-    reminder_time = now + timedelta(minutes=5)
-    date_str = reminder_time.strftime('%Y-%m-%d')
-    time_str = reminder_time.strftime('%H:%M')
+    now = datetime.utcnow().replace(tzinfo=pytz.utc)
+    reminder_window_start = now + timedelta(minutes=5)
+    reminder_window_end = now + timedelta(minutes=6)  # 1-minute window to avoid duplicates
 
+    date_str = reminder_window_start.strftime('%Y-%m-%d')
+
+    # Fetch appointments for today
     appointments = mongo.db.appointments.find({
         'date': date_str,
-        'time': time_str,
-        'status': {'$in': ['booked', 'confirmed']}
+        'status': {'$in': ['booked']}
     })
 
     for appt in appointments:
-        user = mongo.db.users.find_one({'_id': ObjectId(appt['userId'])})
-        doctor = mongo.db.doctors.find_one({'_id': ObjectId(appt['doctorId'])})
+        try:
+            appt_datetime = datetime.strptime(f"{appt['date']} {appt['time']}", "%Y-%m-%d %H:%M")
+            appt_datetime = pytz.utc.localize(appt_datetime)
 
-        send_fcm(user.get('deviceToken'), "Appointment Reminder",
-                 f"Your appointment with Dr. {doctor['name']} is at {appt['time']}")
-        send_fcm(doctor.get('deviceToken'), "Appointment Reminder",
-                 f"You have an appointment with {user['name']} at {appt['time']}")
+            # If appointment is within the next 5–6 minutes
+            if reminder_window_start <= appt_datetime < reminder_window_end:
+                user = mongo.db.users.find_one({'_id': ObjectId(appt['userId'])})
+                doctor = mongo.db.doctors.find_one({'_id': ObjectId(appt['doctorId'])})
 
+                if user:
+                    send_fcm(user.get('deviceToken'), "Appointment Reminder",
+                             f"Your appointment with Dr. {doctor.get('name', 'Unknown')} is at {appt['time']}.")
+                if doctor:
+                    send_fcm(doctor.get('deviceToken'), "Appointment Reminder",
+                             f"You have an appointment with {user.get('name', 'Unknown')} at {appt['time']}.")
+        except Exception as e:
+            app.logger.error(f"Error sending reminder for appointment: {str(e)}")
 scheduler = BackgroundScheduler()
 scheduler.add_job(check_upcoming_appointments, 'interval', minutes=1)
 scheduler.start()
@@ -932,7 +950,7 @@ def mark_messages_delivered(chat_id):
 
 if __name__ == '__main__':
     app.run(
-        host='192.168.10.10',
+        host='192.168.1.8',
         port=5000,
         debug=True
     )
