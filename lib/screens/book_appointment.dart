@@ -87,7 +87,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
 
     try {
       final uri = Uri.parse(
-        'http://192.168.1.12:5000/api/doctors?specialization=${Uri.encodeComponent(_selectedSpecialization!)}',
+        'http://192.168.1.4:5000/api/doctors?specialization=${Uri.encodeComponent(_selectedSpecialization!)}',
       );
       final response = await http.get(uri);
 
@@ -277,7 +277,13 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                       child: ListTile(
                         leading: const CircleAvatar(child: Icon(Icons.person)),
                         title: Text(doctor['name'] ?? 'Dr. Unknown'),
-                        subtitle: Text(doctor['specialization'] ?? ''),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(doctor['specialization'] ?? ''),
+                            Text('Fee: ₹${doctor['fee'] ?? 'N/A'}', style: TextStyle(fontSize: 12)),
+                          ],
+                        ),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () {
                           Navigator.push(

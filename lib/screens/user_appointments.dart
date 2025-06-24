@@ -39,7 +39,7 @@ class _UserAppointmentsState extends State<UserAppointments> {
     try {
       final response = await http.get(
         Uri.parse(
-          'http://192.168.1.12:5000/api/user/${widget.user['_id']}/appointments',
+          'http://192.168.1.4:5000/api/user/${widget.user['_id']}/appointments',
         ),
       );
 
@@ -83,23 +83,23 @@ class _UserAppointmentsState extends State<UserAppointments> {
 
   Future<void> initiateVideoCall(Map<String, dynamic> appointment) async {
     final res = await http.post(
-      Uri.parse('http://192.168.1.12:5000/api/start-call'),
+      Uri.parse('http://192.168.1.4:5000/api/start-call'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'channelName': appointment['_id'],
-        'targetFCMToken': appointment['otherFcmToken'],
       }),
     );
     final data = jsonDecode(res.body);
     if (!mounted) return;
     if (data['success'] == true) {
+
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => VideoCallScreen(
-            token: data['token'],
-            channelName: appointment['_id'],
+            channel: appointment['_id'],
             isCaller: true,
+            token: data['token'],
           ),
         ),
       );
@@ -163,7 +163,9 @@ class _UserAppointmentsState extends State<UserAppointments> {
               Icons.star,
               'Rate',
               const Color.fromARGB(255, 238, 211, 91),
-              () => _showRatingDialog(context, appointment),
+              (appointment['rating'] as num?) != null
+                  ? null // Disable if rating exists
+                  : () => _showRatingDialog(context, appointment),
             ),
           ],
         ),
@@ -286,7 +288,8 @@ class _UserAppointmentsState extends State<UserAppointments> {
     BuildContext context,
     Map<String, dynamic> appointment,
   ) {
-    double rating = 0;
+    double rating = (appointment['rating'] as num?)?.toDouble() ?? 0;
+
     showDialog(
       context: context,
       builder: (_) => StatefulBuilder(
@@ -306,7 +309,11 @@ class _UserAppointmentsState extends State<UserAppointments> {
                       size: 32,
                       color: Colors.amber,
                     ),
-                    onPressed: () => setState(() => rating = i + 1.0),
+                    onPressed: () {
+                      if ((appointment['rating'] as num?) == null) {
+                        setState(() => rating = i + 1.0);
+                      }
+                    },
                   );
                 }),
               ),
@@ -321,16 +328,45 @@ class _UserAppointmentsState extends State<UserAppointments> {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Thanks for rating ${appointment['otherName']} with $rating stars!',
-                    ),
-                  ),
-                );
-                Navigator.pop(context);
-              },
+              onPressed: (appointment['rating'] as num?) != null
+                  ? null
+                  : () async {
+                      final appointmentId = appointment['_id'];
+
+                      try {
+                        final response = await http.post(
+                          Uri.parse(
+                              'http://192.168.1.4:5000/api/appointments/$appointmentId/rate'),
+                          headers: {'Content-Type': 'application/json'},
+                          body: jsonEncode({'rating': rating}),
+                        );
+
+                        final data = jsonDecode(response.body);
+                        if (!mounted) return;
+
+                        if (response.statusCode == 200 && data['success'] == true) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Thanks for rating ${appointment['otherName']} with $rating stars!',
+                              ),
+                            ),
+                          );
+                          Navigator.pop(context);
+                          fetchAppointments(); // Refresh list to show new rating
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(data['message'] ?? 'Rating failed')),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error: $e')),
+                          );
+                        }
+                      }
+                    },
               child: const Text(
                 'Submit Rating',
                 style: TextStyle(color: Colors.white),
@@ -518,7 +554,20 @@ class _UserAppointmentsState extends State<UserAppointments> {
                               ],
                             ),
                           ],
-                          const SizedBox(height: 8),
+                          if ((appt['rating'] as num?) != null) ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                const Icon(Icons.star, size: 18, color: Colors.amber),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Rated: ${(appt['rating'] as num).toDouble().toStringAsFixed(1)} stars',
+                                  style: theme.textTheme.bodyMedium,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                          ],
                           isDoctor
                               ? _buildDoctorFeatures(context, appt)
                               : _buildUserFeatures(context, appt),

@@ -12,12 +12,12 @@ from PIL import Image
 from pdf2image import convert_from_bytes
 import io
 from apscheduler.schedulers.background import BackgroundScheduler
-import pytz
 import firebase_admin
 from firebase_admin import credentials, messaging
 from agora_token_builder import RtcTokenBuilder
 from apscheduler.schedulers.base import SchedulerAlreadyRunningError
 from pytz import timezone
+import time
 
 
 app = Flask(__name__)
@@ -82,7 +82,7 @@ def signup():
         
         try:
             dob = datetime.strptime(data['dob'], '%Y-%m-%d')
-            if dob > datetime.now():
+            if dob > datetime.now(pkt):
                 return jsonify({
                     'success': False,
                     'message': 'Date of birth cannot be in the future'
@@ -101,10 +101,14 @@ def signup():
             'gender': data['gender'],
             'password': hashed_password.decode('utf-8'),
             'role': data['role'],
+            'balance': 0,
             'created_at': datetime.now(pkt),
             'updated_at': datetime.now(pkt),
             'verified': False
         }
+
+        if(role ==  'Doctor'):
+            user['fee'] = 500
         
         result = mongo.db.users.insert_one(user)
         user['_id'] = str(result.inserted_id)
@@ -491,7 +495,16 @@ def book_appointment():
         if not ObjectId.is_valid(data['doctorId']):
             return jsonify({'success': False, 'message': 'Invalid doctor ID format'}), 400
 
-        doctor = mongo.db.doctors.find_one({'_id': ObjectId(data['doctorId'])})
+        # Validate user
+        user = mongo.db.users.find_one({'_id': ObjectId(data['userId'])})
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+
+        # check user balance 
+        if user.get('balance', 0) < data.get('fee', 0):
+            return jsonify({'success': False, 'message': 'Insufficient balance'}), 400
+
+        doctor = mongo.db.users.find_one({'_id': ObjectId(data['doctorId'])})
         if not doctor:
             return jsonify({'success': False, 'message': 'Doctor not found'}), 404
 
@@ -534,14 +547,27 @@ def book_appointment():
             'time': data['time'],
             'payment': data.get('payment'),  # Optional
             'status': 'booked',
+            'fee': doctor.get('fee'),
             'channel': channel,
             'created_at': datetime.now(pkt),
             'updated_at': datetime.now(pkt),
-            'remindersSent': []
+            'reminderSent': False
         }
 
         result = mongo.db.appointments.insert_one(appointment)
         appointment['_id'] = str(result.inserted_id)
+
+        # update doctor balance
+        mongo.db.users.update_one(
+            {'_id': ObjectId(data['doctorId'])},
+            {'$inc': {'balance': doctor.get('fee')}}
+        )
+
+        # update user balance
+        mongo.db.users.update_one(
+            {'_id': ObjectId(data['userId'])},
+            {'$inc': {'balance': -doctor.get('fee')}}
+        )
 
         return jsonify({
             'success': True,
@@ -703,66 +729,64 @@ def get_user_appointments(user_id):
     if not user:
         return jsonify({'success': False, 'message': 'User not found'}), 404
 
-    now = datetime.now(pkt)
-    upcoming_appointments = []
     role = user.get('role')
     appointments = []
 
     if role == 'General User':
-        appointments = list(mongo.db.appointments.find({'userId': user_id}))
+        appointments = list(mongo.db.appointments.find({'userId': str(user['_id'])}))
         for appt in appointments:
-            doctor = mongo.db.doctors.find_one({'_id': ObjectId(appt['doctorId'])})
-            appt['otherName'] = doctor.get('name') if doctor else 'Unknown Doctor'
+            doctor = mongo.db.users.find_one({'_id': ObjectId(appt['doctorId'])})
+            appt['otherName'] = doctor.get('name', 'Unknown Doctor') if doctor else 'Unknown Doctor'
             appt['otherFcmToken'] = doctor.get('deviceToken', '') if doctor else ''
+
     elif role == 'Doctor':
-        appointments = list(mongo.db.appointments.find({'doctorId': user_id}))
+        appointments = list(mongo.db.appointments.find({'doctorId': str(user['_id'])}))
         for appt in appointments:
-            patient = mongo.db.users.find_one({'_id': ObjectId(appt['userId'])})
-            appt['otherName'] = patient.get('name') if patient else 'Unknown Patient'
-            appt['otherFcmToken'] = patient.get('deviceToken', '') if patient else ''
+            try:
+                patient = mongo.db.users.find_one({'_id': ObjectId(appt['userId'])})
+                appt['otherName'] = patient.get('name', 'Unknown Patient') if patient else 'Unknown Patient'
+                appt['otherFcmToken'] = patient.get('deviceToken', '') if patient else ''
+            except Exception:
+                appt['otherName'] = 'Unknown'
+                appt['otherFcmToken'] = ''
+
     else:
         return jsonify({'success': False, 'message': 'Invalid user role'}), 400
 
-    for appt in appointments:
+    # Optional: Add sorting by datetime if date and time exist
+    def parse_datetime(appt):
         try:
-            appt_date = appt.get('date')
-            appt_time = appt.get('time')
-            if not appt_date or not appt_time:
-                continue
+            return datetime.strptime(f"{appt.get('date')} {appt.get('time')}", "%Y-%m-%d %H:%M")
+        except:
+            return datetime.min
 
-            appointment_datetime = datetime.strptime(f"{appt_date} {appt_time}", "%Y-%m-%d %H:%M")
+    appointments.sort(key=parse_datetime)
 
-            if appointment_datetime > now:
-                appt['_id'] = str(appt['_id'])  # Convert ObjectId to string
-                appt['appointmentDateTime'] = appointment_datetime  # For sorting
-                upcoming_appointments.append(appt)
-        except Exception:
-            continue  # Skip malformed entries
+    for appt in appointments:
+        appt['_id'] = str(appt['_id'])  # convert ObjectId to string
 
-    # Sort upcoming appointments by datetime
-    upcoming_appointments.sort(key=lambda x: x['appointmentDateTime'])
-
-    # Remove datetime object from final response (not JSON serializable)
-    for appt in upcoming_appointments:
-        appt.pop('appointmentDateTime', None)
-
-    return jsonify({'success': True, 'appointments': upcoming_appointments}), 200
+    return jsonify({'success': True, 'appointments': appointments}), 200
 
 @app.route('/api/save-token', methods=['POST'])
-def save_token():
+def save_device_token():
     data = request.json
     user_id = data.get('userId')
-    is_doctor = data.get('isDoctor')
     token = data.get('deviceToken')
 
-    print('token', token)
+    if not user_id or not token:
+        return jsonify({'success': False, 'message': 'Missing data'}), 400
 
-    collection = mongo.db.doctors if is_doctor else mongo.db.users
-    collection.update_one(
+    collection = mongo.db.users
+    result = collection.update_one(
         {'_id': ObjectId(user_id)},
         {'$set': {'deviceToken': token}}
     )
-    return jsonify({'success': True}), 200
+
+    if result.modified_count == 1:
+        return jsonify({'success': True, 'message': 'Token saved'})
+    else:
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+
 
 def send_fcm(token, title, body):
     if not token:
@@ -773,17 +797,19 @@ def send_fcm(token, title, body):
     )
     messaging.send(message)
 
+scheduler = BackgroundScheduler()
+print("[Scheduler] Started")
+
 def check_upcoming_appointments():
     print("[START] check_upcoming_appointments")
     now = datetime.now(pkt)
     print(f"[Scheduler Tick] Current time: {now}")
 
-    reminder_offsets = [5]  # minutes before appointment
-
     today_str = now.strftime('%Y-%m-%d')
     appointments = mongo.db.appointments.find({
         'date': today_str,
-        'status': {'$in': ['booked', 'confirmed']}
+        'status': {'$in': ['booked', 'confirmed']},
+        'reminderSent': False  # Only get appointments that haven't been reminded
     })
 
     for appt in appointments:
@@ -793,64 +819,65 @@ def check_upcoming_appointments():
             appt_local = pkt.localize(appt_naive)
 
             minutes_until = int((appt_local - now).total_seconds() / 60)
-            result = mongo.db.appointments.update_one(
-                {'_id': appt['_id']},
-                {'$push': {'remindersSent': offset}}
-            )
-            if result.modified_count:
-                print(f"[Reminder marked sent] {appt['_id']} - {offset} min")
-            else:
-                print(f"[WARNING] Failed to mark reminder as sent for {appt['_id']}")
-            reminders_sent = appt.get('remindersSent', [])
+            
 
-            for offset in reminder_offsets:
-                if minutes_until == offset and offset not in reminders_sent:
-                    user = mongo.db.users.find_one({'_id': ObjectId(appt['userId'])})
-                    doctor = mongo.db.doctors.find_one({'_id': ObjectId(appt['doctorId'])})
+            if 4 <= minutes_until <= 6:
+                user = mongo.db.users.find_one({'_id': ObjectId(appt['userId'])})
+                doctor = mongo.db.users.find_one({'_id': ObjectId(appt['doctorId'])})
 
-                    user_name = user.get('name', 'Unknown') if user else 'Unknown User'
-                    doctor_name = doctor.get('name', 'Unknown') if doctor else 'Unknown Doctor'
+                user_name = user.get('name', 'Unknown') if user else 'Unknown User'
+                doctor_name = doctor.get('name', 'Unknown') if doctor else 'Unknown Doctor'
 
-                    # if current user is doctor print username 
-                    if user['role'] == 'General User':
-                        print(f"[Reminder: {offset} mins before] {user_name} with Dr. {doctor_name} at {appt['time']}")
-                    if doctor['role'] == 'Doctor':
-                        print(f"[Reminder: {offset} mins before] {doctor_name} with {user_name} at {appt['time']}")
+                # Log who gets reminded
+                if user:
+                    print(f"[Reminder: 5 mins] {user_name} with Dr. {doctor_name} at {appt['time']}")
+                if doctor:
+                    print(f"[Reminder: 5 mins] Dr. {doctor_name} with {user_name} at {appt['time']}")
 
-                    if user:
-                        send_fcm(user.get('deviceToken'), f"Appointment in {offset} min",
-                                 f"Your appointment with Dr. {doctor_name} is at {appt['time']}.")
-                    if doctor:
-                        send_fcm(doctor.get('deviceToken'), f"Appointment in {offset} min",
-                                 f"You have an appointment with {user_name} at {appt['time']}.")
+                # Send reminders
+                if user:
+                    send_fcm(user.get('deviceToken'), "Appointment in 5 minutes",
+                             f"Your appointment with Dr. {doctor_name} is at {appt['time']}.")
+                if doctor:
+                    send_fcm(doctor.get('deviceToken'), "Appointment in 5 minutes",
+                             f"You have an appointment with {user_name} at {appt['time']}.")
 
-                    # Mark this reminder as sent
-                    mongo.db.appointments.update_one(
-                        {'_id': appt['_id']},
-                        {'$push': {'remindersSent': offset}}
-                    )
-                    break  # only one reminder per run
+                # Mark reminsend_fcder as sent
+                mongo.db.appointments.update_one(
+                    {'_id': appt['_id']},
+                    {'$set': {'reminderSent': True}}
+                )
+
         except Exception as e:
             app.logger.error(f"Error in reminder logic: {str(e)}")
 
-scheduler = BackgroundScheduler()
-scheduler.add_job(check_upcoming_appointments, 'interval', minutes=1)
-scheduler.start()
+try:
+    scheduler.add_job(check_upcoming_appointments, 'interval', minutes=1)
+    scheduler.start()
+except SchedulerAlreadyRunningError:
+    pass
 
 @app.route('/api/start-call', methods=['POST'])
 def start_call():
     data = request.json
     channel_name = data['channelName']
     uid = 0
-    expire_time = int(time.time()) + 300
+    expire_time = int(time.time()) + 1800
 
     token = RtcTokenBuilder.buildTokenWithUid(
         AGORA_APP_ID, AGORA_APP_CERTIFICATE,
         channel_name, uid, 1, expire_time
     )
 
+    # find appointment through channel name
+    appointment = mongo.db.appointments.find_one({'_id': ObjectId(channel_name)})
+    if not appointment:
+        return jsonify({'success': False, 'message': 'Appointment not found'}), 404
+
+    user = mongo.db.users.find_one({'_id': ObjectId(appointment['userId'])})
+    
     # Send push notification to user
-    target_token = data['targetFCMToken']
+    target_token = user.get('deviceToken')
     messaging.send(messaging.Message(
         notification=messaging.Notification(
             title='Incoming Video Call',
@@ -981,6 +1008,28 @@ def rate_appointment(appointment_id):
 
     return jsonify({'success': True, 'message': 'Rating submitted successfully'}), 200
 
+# change doctor fees
+@app.route('/api/doctor/<doctor_id>/fee', methods=['POST'])
+def change_fee(doctor_id):
+    if not ObjectId.is_valid(doctor_id):
+        return jsonify({'success': False, 'message': 'Invalid doctor ID'}), 400
+
+    data = request.get_json()
+    fee = data.get('fee')
+    if not fee or not isinstance(fee, (int, float)) or not (500 <= fee <= 2500):
+        return jsonify({'success': False, 'message': 'Fee must be a number between 500 and 2500'}), 400
+
+    doctor_id = list(mongo.db.users.find({'_id': ObjectId(doctor_id)}))
+    if not doctor_id:
+        return jsonify({'success': False, 'message': 'Doctor not found in appointment'}), 400
+
+    # Update appointment with rating
+    mongo.db.users.update_one(
+        {'_id': ObjectId(doctor_id)},
+        {'$set': {'fee': fee}}
+    )
+
+    return jsonify({'success': True, 'message': 'Fee changed successfully'}), 200
 
 
 
@@ -995,7 +1044,7 @@ def rate_appointment(appointment_id):
 
 if __name__ == '__main__':
     if not app.debug or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
-        print("[INFO] Scheduler already running or started externally.")
+        print("[INFO] Starting scheduler...")
 
     print("[INFO] Starting Flask app...")
-    app.run(host='192.168.1.12', port=5000, debug=True)
+    app.run(host='192.168.1.4', port=5000, debug=True)

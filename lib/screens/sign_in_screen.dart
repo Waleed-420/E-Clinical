@@ -25,29 +25,28 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _rememberMe = false;
   bool _isLoading = false;
 
-  Future<void> saveToken(String userId, bool isDoctor) async {
-    String? token = await FirebaseMessaging.instance.getToken();
-    
-    if (kDebugMode){
-      print("Token: $token");
-    }
+  Future<void> saveToken(Map<String, dynamic> user) async {
+  String? token = await FirebaseMessaging.instance.getToken();
 
-    await http.post(
-      Uri.parse('http://192.168.1.12:5000/api/save-token'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'userId': userId,
-        'isDoctor': isDoctor,
-        'deviceToken': token,
-      }),
-    );
+  if (kDebugMode) {
+    print("Token: $token");
   }
 
+  await http.post(
+    Uri.parse('http://192.168.1.4:5000/api/save-token'),
+    headers: {'Content-Type': 'application/json'},
+    body: json.encode({
+      'userId': user['_id'],
+      'deviceToken': token,
+    }),
+  );
+}
+  
   Future<void> _signIn() async {
     setState(() => _isLoading = true);
     try {
       final response = await http.post(
-        Uri.parse("http://192.168.1.12:5000/api/signin"),
+        Uri.parse("http://192.168.1.4:5000/api/signin"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": _emailController.text.trim(),
@@ -63,6 +62,8 @@ class _SignInScreenState extends State<SignInScreen> {
             .toString()
             .toLowerCase();
 
+        await saveToken(user);
+
         if (kDebugMode) {
           print("User Role: $role");
         } // Debug log
@@ -75,7 +76,6 @@ class _SignInScreenState extends State<SignInScreen> {
           ),
         );
 
-        saveToken(user['_id'], role == 'doctor');
 
         if (role == 'doctor') {
           // Check if doctor has completed first-time setup

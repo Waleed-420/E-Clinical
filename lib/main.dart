@@ -76,9 +76,9 @@ class _MyAppState extends State<MyApp> {
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => VideoCallScreen(
-                    token: token,
-                    channelName: channelName,
+                    channel: channelName,
                     isCaller: false, // the callee
+                    token: token,
                   ),
                 ),
               );

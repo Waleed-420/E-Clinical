@@ -28,6 +28,8 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
   int _completedAppointments = 156; // Example completed
   int _totalAppointments = 200; // Example total
   int _remainingDays = 14; // Example remaining days
+  double _newFee = 500;
+
 
   final List<Widget> _pages = [];
 
@@ -49,7 +51,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
     try {
       final response = await http.get(
         Uri.parse(
-          'http://192.168.1.12:5000/api/appointments?doctorId=${widget.user['_id']}&status=booked',
+          'http://192.168.1.4:5000/api/appointments?doctorId=${widget.user['_id']}&status=booked',
         ),
       );
 
@@ -68,7 +70,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
     try {
       final response = await http.get(
         Uri.parse(
-          'http://192.168.1.12:5000/api/doctors?doctorId=${widget.user['_id']}',
+          'http://192.168.1.4:5000/api/doctors?doctorId=${widget.user['_id']}',
         ),
       );
 
@@ -222,38 +224,153 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                               color: Colors.grey[600],
                             ),
                           ),
+                          const SizedBox(height: 8),
+                          if (widget._doctorDetails?['ratings'] != null &&
+                              widget._doctorDetails!['ratings'] is List &&
+                              (widget._doctorDetails!['ratings'] as List).isNotEmpty) ...[
+                            Row(
+                              children: [
+                                const Icon(Icons.star, color: Colors.amber, size: 20),
+                                const SizedBox(width: 6),
+                                () {
+                                  final ratings = widget._doctorDetails?['ratings'] as List? ?? [];
+                                  if (ratings.isEmpty) {
+                                    return const Text(
+                                      'Not rated yet',
+                                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                                    );
+                                  }
+
+                                  final total = ratings.fold<int>(0, (sum, r) => sum + (r as int));
+                                  final avg = (total / ratings.length).round();
+
+                                  return Row(
+                                    children: [
+                                      // Stars
+                                      Row(
+                                        children: List.generate(5, (i) {
+                                          return Icon(
+                                            i < avg ? Icons.star : Icons.star_border,
+                                            color: Colors.amber,
+                                            size: 20,
+                                          );
+                                        }),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        '($avg / 5 from ${ratings.length} ratings)',
+                                        style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                                      ),
+                                    ],
+                                  );
+                                }(),
+                              ],
+                            ),
+
+                          ] else ...[
+                            Row(
+                              children: const [
+                                Icon(Icons.star_border, color: Colors.grey, size: 20),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Not rated yet',
+                                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          ],
                           const SizedBox(height: 16),
-Card(
+                          Card(
+                            elevation: 2,
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    'Available Balance',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    '\$${_balance.toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF15A196),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                        ],
+                      ),
+                    ),
+                  ),Card(
   elevation: 2,
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(12),
+  ),
   child: Padding(
     padding: const EdgeInsets.all(16.0),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Available Balance',
+          'Update Consultation Fee',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
         ),
-        Text(
-          '\$${_balance.toStringAsFixed(2)}',
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF15A196),
+        const SizedBox(height: 12),
+        TextFormField(
+          decoration: const InputDecoration(
+            labelText: 'Enter Fee (500 - 2500)',
+            prefixIcon: Icon(Icons.attach_money),
+            border: OutlineInputBorder(),
           ),
+          keyboardType: TextInputType.number,
+          onChanged: (value) {
+            setState(() {
+              _newFee = double.tryParse(value) ?? 0;
+            });
+          },
+        ),
+        const SizedBox(height: 16),
+        ElevatedButton(
+          onPressed: () async {
+            if (_newFee >= 500 && _newFee <= 2500) {
+              final response = await http.post(
+                Uri.parse('http://192.168.1.4:5000/api/doctor/${widget.user['_id']}/fee'),
+                headers: {'Content-Type': 'application/json'},
+                body: json.encode({'fee': _newFee}),
+              );
+
+              final result = json.decode(response.body);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(result['message'] ?? 'Unknown response')),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Fee must be between 500 and 2500')),
+              );
+            }
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF15A196),
+            minimumSize: const Size(double.infinity, 48),
+          ),
+          child: const Text('Update Fee'),
         ),
       ],
     ),
   ),
 ),
-
-                        ],
-                      ),
-                    ),
-                  ),
                   const SizedBox(height: 24),
                   if (widget._upcomingAppointments.isNotEmpty) ...[
                     const Align(
