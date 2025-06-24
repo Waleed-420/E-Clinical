@@ -24,7 +24,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
   List<dynamic> _messages = [];
   String? _chatId;
-  String? _otherUserName;
   bool _isSending = false;
   Timer? _refreshTimer;
 
@@ -57,19 +56,9 @@ class _ChatScreenState extends State<ChatScreen> {
       final data = json.decode(response.body);
       final chat = data['chat'];
 
-      // Identify the other user
-      final participants = List<Map<String, dynamic>>.from(
-        chat['participants'] ?? [],
-      );
-      final otherUser = participants.firstWhere(
-        (p) => p['_id'] != widget.currentUser['_id'],
-        orElse: () => {'name': 'Unknown'},
-      );
-
       setState(() {
         _chatId = chat['_id'];
         _messages = chat['messages'];
-        _otherUserName = otherUser['name'] ?? 'Unknown';
       });
 
       _scrollToBottom();
@@ -111,7 +100,11 @@ class _ChatScreenState extends State<ChatScreen> {
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
-        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
       }
     });
   }
@@ -131,8 +124,11 @@ class _ChatScreenState extends State<ChatScreen> {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isUser && showAvatar)
-            const CircleAvatar(radius: 16, backgroundColor: Colors.grey),
-          if (!isUser && !showAvatar) const SizedBox(width: 40),
+            const Padding(
+              padding: EdgeInsets.only(right: 6.0),
+              child: Icon(Icons.person, size: 28, color: Color(0xFF15A196)),
+            ),
+          if (!isUser && !showAvatar) const SizedBox(width: 34),
           Flexible(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -193,23 +189,10 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: const BackButton(),
-        title: Row(
-          children: [
-            const CircleAvatar(backgroundColor: Colors.grey, radius: 16),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                _otherUserName ?? 'Loading...',
-                style: const TextStyle(fontSize: 16),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
+        title: const Text(
+          'Consultation Chat',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
-        actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.call)),
-          IconButton(onPressed: () {}, icon: const Icon(Icons.videocam)),
-        ],
         elevation: 0,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,

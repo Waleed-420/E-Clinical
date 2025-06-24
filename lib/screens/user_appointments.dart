@@ -142,7 +142,7 @@ class _UserAppointmentsState extends State<UserAppointments> {
               context,
               Icons.medical_services,
               'Prescription',
-              Colors.green,
+              const Color.fromARGB(255, 102, 228, 215),
               () => _showFeatureDialog(
                 context,
                 'View prescription from ${appointment['otherName']}',
@@ -152,7 +152,7 @@ class _UserAppointmentsState extends State<UserAppointments> {
               context,
               Icons.upload_file,
               'Send Reports',
-              Colors.orange,
+              const Color.fromARGB(255, 245, 108, 108),
               () => _showFeatureDialog(
                 context,
                 'Send medical reports to ${appointment['otherName']}',
@@ -162,7 +162,7 @@ class _UserAppointmentsState extends State<UserAppointments> {
               context,
               Icons.star,
               'Rate',
-              Colors.amber,
+              const Color.fromARGB(255, 238, 211, 91),
               () => _showRatingDialog(context, appointment),
             ),
           ],
