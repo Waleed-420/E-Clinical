@@ -25,7 +25,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
   bool _isLoading = false;
   String? _selectedSlot;
   String? _errorMessage;
-  final Set<String> seenTimes = {};
 
   @override
   void initState() {
@@ -45,7 +44,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
       final date = DateFormat('yyyy-MM-dd').format(_selectedDay);
       final doctorId = widget.doctor['_id'];
       final uri = Uri.parse(
-        'http://192.168.1.8:5000/api/doctor/$doctorId/slots?date=$date',
+        'http://192.168.1.12:5000/api/doctor/$doctorId/slots?date=$date',
       );
 
       final response = await http.get(uri);
@@ -89,7 +88,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.8:5000/api/appointments'),
+        Uri.parse('http://192.168.1.12:5000/api/appointments'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'userId': widget.user['_id'],
@@ -202,53 +201,54 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
             else if (_availableSlots.isEmpty)
               const Text('No available slots for this day')
             else
-               // <-- Moved here to cover all slots
+              (() {
+    final Set<String> seenTimes = {};
 
-Wrap(
-  spacing: 8,
-  runSpacing: 8,
-  children: _availableSlots.expand<Widget>((slotRange) {
-    final List<dynamic> slots = slotRange['slots'] ?? [];
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: _availableSlots.expand<Widget>((slotRange) {
+        final List<dynamic> slots = slotRange['slots'] ?? [];
 
-    return slots.map<Widget>((slotObj) {
-      final String? time = slotObj['time'];
-      final bool isBooked = slotObj['booked'] ?? false;
+        return slots.map<Widget>((slotObj) {
+          final String? time = slotObj['time'];
+          final bool isBooked = slotObj['booked'] ?? false;
 
-      if (time == null || seenTimes.contains(time)) {
-        return const SizedBox.shrink(); // Avoid duplicate rendering
-      }
+          if (time == null || seenTimes.contains(time)) {
+            return const SizedBox.shrink();
+          }
 
-      seenTimes.add(time);
+          seenTimes.add(time);
 
-      final timeParts = time.split(':');
-      final int hour = int.parse(timeParts[0]);
-      final int minute = int.parse(timeParts[1]);
+          final timeParts = time.split(':');
+          final int hour = int.parse(timeParts[0]);
+          final int minute = int.parse(timeParts[1]);
 
-      final start = TimeOfDay(hour: hour, minute: minute);
-      final end = start.replacing(
-        minute: (minute + 30) % 60,
-        hour: hour + ((minute + 30) ~/ 60),
-      );
-      final rangeLabel =
-          '${start.format(context)} - ${end.format(context)}';
+          final start = TimeOfDay(hour: hour, minute: minute);
+          final end = start.replacing(
+            minute: (minute + 30) % 60,
+            hour: hour + ((minute + 30) ~/ 60),
+          );
+          final rangeLabel =
+              '${start.format(context)} - ${end.format(context)}';
 
-      return ChoiceChip(
-        label: Text(rangeLabel),
-        selected: _selectedSlot == time && !isBooked,
-        onSelected: isBooked
-            ? null
-            : (selected) {
-                setState(() {
-                  _selectedSlot = selected ? time : null;
-                });
-              },
-        backgroundColor: isBooked ? Colors.grey.shade300 : null,
-        disabledColor: Colors.grey.shade300,
-      );
-    }).toList();
-  }).toList(),
-),
-
+          return ChoiceChip(
+            label: Text(rangeLabel),
+            selected: _selectedSlot == time && !isBooked,
+            onSelected: isBooked
+                ? null
+                : (selected) {
+                    setState(() {
+                      _selectedSlot = selected ? time : null;
+                    });
+                  },
+            backgroundColor: isBooked ? Colors.grey.shade300 : null,
+            disabledColor: Colors.grey.shade300,
+          );
+        }).toList();
+      }).toList(),
+    );
+  })(),
             const SizedBox(height: 32),
 
             // Book Button

@@ -87,7 +87,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
 
     try {
       final uri = Uri.parse(
-        'http://192.168.1.8:5000/api/doctors?specialization=${Uri.encodeComponent(_selectedSpecialization!)}',
+        'http://192.168.1.12:5000/api/doctors?specialization=${Uri.encodeComponent(_selectedSpecialization!)}',
       );
       final response = await http.get(uri);
 

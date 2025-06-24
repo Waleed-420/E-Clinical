@@ -33,7 +33,7 @@ class _SignInScreenState extends State<SignInScreen> {
     }
 
     await http.post(
-      Uri.parse('http://192.168.1.8:5000/api/save-token'),
+      Uri.parse('http://192.168.1.12:5000/api/save-token'),
       headers: {'Content-Type': 'application/json'},
       body: json.encode({
         'userId': userId,
@@ -47,7 +47,7 @@ class _SignInScreenState extends State<SignInScreen> {
     setState(() => _isLoading = true);
     try {
       final response = await http.post(
-        Uri.parse("http://192.168.1.8:5000/api/signin"),
+        Uri.parse("http://192.168.1.12:5000/api/signin"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": _emailController.text.trim(),
@@ -74,6 +74,8 @@ class _SignInScreenState extends State<SignInScreen> {
             backgroundColor: Colors.green,
           ),
         );
+
+        saveToken(user['_id'], role == 'doctor');
 
         if (role == 'doctor') {
           // Check if doctor has completed first-time setup
