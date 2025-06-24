@@ -51,7 +51,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
     try {
       final response = await http.get(
         Uri.parse(
-          'http://192.168.1.4:5000/api/appointments?doctorId=${widget.user['_id']}&status=booked',
+          'http://192.168.10.10:5000/api/appointments?doctorId=${widget.user['_id']}&status=booked',
         ),
       );
 
@@ -70,7 +70,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
     try {
       final response = await http.get(
         Uri.parse(
-          'http://192.168.1.4:5000/api/doctors?doctorId=${widget.user['_id']}',
+          'http://192.168.10.10:5000/api/doctors?doctorId=${widget.user['_id']}',
         ),
       );
 
@@ -346,7 +346,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
           onPressed: () async {
             if (_newFee >= 500 && _newFee <= 2500) {
               final response = await http.post(
-                Uri.parse('http://192.168.1.4:5000/api/doctor/${widget.user['_id']}/fee'),
+                Uri.parse('http://192.168.10.10:5000/api/doctor/${widget.user['_id']}/fee'),
                 headers: {'Content-Type': 'application/json'},
                 body: json.encode({'fee': _newFee}),
               );

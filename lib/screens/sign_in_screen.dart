@@ -33,7 +33,7 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   await http.post(
-    Uri.parse('http://192.168.1.4:5000/api/save-token'),
+    Uri.parse('http://192.168.10.10:5000/api/save-token'),
     headers: {'Content-Type': 'application/json'},
     body: json.encode({
       'userId': user['_id'],
@@ -46,7 +46,7 @@ class _SignInScreenState extends State<SignInScreen> {
     setState(() => _isLoading = true);
     try {
       final response = await http.post(
-        Uri.parse("http://192.168.1.4:5000/api/signin"),
+        Uri.parse("http://192.168.10.10:5000/api/signin"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": _emailController.text.trim(),
