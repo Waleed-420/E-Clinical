@@ -838,8 +838,18 @@ def handle_chat_channel(channel):
         chat = mongo.db.chats.find_one({'channel': channel})
         if not chat:
             return jsonify({'success': False, 'message': 'Chat not found'}), 404
+
         chat['_id'] = str(chat['_id'])
-        return jsonify({'success': True, 'chat': chat}), 200
+
+        # Extract user IDs from channel name
+        try:
+            user_ids = channel.split('_')
+            user_objs = list(mongo.db.users.find({'_id': {'$in': [ObjectId(uid) for uid in user_ids]}}))
+            users = [{'_id': str(u['_id']), 'name': u.get('name', 'Unknown')} for u in user_objs]
+        except Exception as e:
+            users = []
+
+        return jsonify({'success': True, 'chat': chat, 'users': users}), 200
 
     elif request.method == 'POST':
         chat = mongo.db.chats.find_one({'channel': channel})
@@ -875,7 +885,8 @@ def send_message(chat_id):
         message = {
             'sender': sender,
             'content': content,
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.utcnow().isoformat(),
+            'delivered': False  # Make sure previous lines all have commas!
         }
 
         mongo.db.chats.update_one(
@@ -892,6 +903,18 @@ def send_message(chat_id):
         return jsonify({'success': False, 'message': f'Error sending message: {str(e)}'}), 500
 
 
+@app.route('/api/chat/<chat_id>/mark-delivered', methods=['POST'])
+def mark_messages_delivered(chat_id):
+    try:
+        user_id = request.json.get('user_id')
+        mongo.db.chats.update_one(
+            {'_id': ObjectId(chat_id)},
+            {'$set': {'messages.$[elem].delivered': True}},
+            array_filters=[{'elem.sender': {'$ne': user_id}}]
+        )
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
 
