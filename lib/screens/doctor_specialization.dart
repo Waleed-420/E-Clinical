@@ -41,7 +41,7 @@ class _DoctorSpecializationScreenState
   Future<bool> updateSpecializationOnServer() async {
     final doctorId = widget.user['_id'];
     final url = Uri.parse(
-      'http://192.168.10.10:5000/api/doctor/$doctorId/specialization',
+      'http://192.168.1.9:5000/api/doctor/$doctorId/specialization',
     );
 
     try {
@@ -64,7 +64,7 @@ class _DoctorSpecializationScreenState
   Future<void> fetchDoctorSpecialization() async {
     final doctorId = widget.user['_id'];
     final url = Uri.parse(
-      'http://192.168.10.10:5000/api/doctor/$doctorId/specialization',
+      'http://192.168.1.9:5000/api/doctor/$doctorId/specialization',
     );
 
     try {

@@ -11,11 +11,11 @@ class VideoCallScreen extends StatefulWidget {
   final String token;
 
   const VideoCallScreen({
-    Key? key,
+    super.key,
     this.channel,
     required this.isCaller,
     required this.token,
-  }) : super(key: key);
+  });
 
   @override
   State<VideoCallScreen> createState() => _VideoCallScreenState();

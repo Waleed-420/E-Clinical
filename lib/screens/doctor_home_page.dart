@@ -53,7 +53,7 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
     try {
       final response = await http.get(
         Uri.parse(
-          'http://192.168.10.10:5000/api/doctors?doctorId=${widget.user['_id']}',
+          'http://192.168.1.9:5000/api/doctors?doctorId=${widget.user['_id']}',
         ),
       );
 
@@ -72,7 +72,7 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
     try {
       final response = await http.get(
         Uri.parse(
-          'http://192.168.10.10:5000/api/appointments?doctorId=${widget.user['_id']}&status=booked',
+          'http://192.168.1.9:5000/api/appointments?doctorId=${widget.user['_id']}&status=booked',
         ),
       );
 
@@ -89,7 +89,6 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final name = _doctorDetails?['name'] ?? 'Doctor';
     final specialization = _doctorDetails?['specialization'] ?? 'Not specified';
     final isVerified = _doctorDetails?['verified'] ?? false;
 

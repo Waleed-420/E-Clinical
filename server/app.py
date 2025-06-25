@@ -101,7 +101,7 @@ def signup():
             'gender': data['gender'],
             'password': hashed_password.decode('utf-8'),
             'role': data['role'],
-            'balance': 0,
+            
             'created_at': datetime.now(pkt),
             'updated_at': datetime.now(pkt),
             'verified': False
@@ -109,6 +109,7 @@ def signup():
 
         if(role ==  'Doctor'):
             user['fee'] = 500
+            user['balance'] = 0
         
         result = mongo.db.users.insert_one(user)
         user['_id'] = str(result.inserted_id)
@@ -496,14 +497,7 @@ def book_appointment():
             return jsonify({'success': False, 'message': 'Invalid doctor ID format'}), 400
 
         # Validate user
-        user = mongo.db.users.find_one({'_id': ObjectId(data['userId'])})
-        if not user:
-            return jsonify({'success': False, 'message': 'User not found'}), 404
-
-        # check user balance 
-        if user.get('balance', 0) < data.get('fee', 0):
-            return jsonify({'success': False, 'message': 'Insufficient balance'}), 400
-
+        
         doctor = mongo.db.users.find_one({'_id': ObjectId(data['doctorId'])})
         if not doctor:
             return jsonify({'success': False, 'message': 'Doctor not found'}), 404
@@ -561,12 +555,6 @@ def book_appointment():
         mongo.db.users.update_one(
             {'_id': ObjectId(data['doctorId'])},
             {'$inc': {'balance': doctor.get('fee')}}
-        )
-
-        # update user balance
-        mongo.db.users.update_one(
-            {'_id': ObjectId(data['userId'])},
-            {'$inc': {'balance': -doctor.get('fee')}}
         )
 
         return jsonify({
@@ -1047,4 +1035,4 @@ if __name__ == '__main__':
         print("[INFO] Starting scheduler...")
 
     print("[INFO] Starting Flask app...")
-    app.run(host='192.168.10.10', port=5000, debug=True)
+    app.run(host='192.168.1.9', port=5000, debug=True)

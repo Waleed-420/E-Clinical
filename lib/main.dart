@@ -5,6 +5,9 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import './screens/splash_screen.dart';
 import './screens/sign_in_screen.dart';
 import './screens/scan_photo_page.dart';
+import 'package:agora_rtc_engine/agora_rtc_engine.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,8 +17,15 @@ void main() async {
     if (message.notification?.title == 'Incoming Video Call') {
       final token = message.data['token'];
       final channelName = message.data['channelName'];
-      // TODO: Implement navigation to call screen with token & channelName
-      print('Incoming call: $channelName, token: $token');
+      Navigator.of(navigatorKey.currentContext!).push(
+        MaterialPageRoute(
+          builder: (_) => VideoCallScreen(
+            channel: channelName,
+            isCaller: false, // the callee
+            token: token,
+          ),
+        ),
+      );
     }
   });
 
@@ -31,12 +41,14 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   late final FirebaseMessaging _messaging;
+  late final RtcEngine _engine;
 
   @override
   void initState() {
     super.initState();
     _messaging = FirebaseMessaging.instance;
-
+    _engine = createAgoraRtcEngine();
+    _engine.initialize(RtcEngineContext(appId: 'dff72470ec104f92aa6cc17e36337822'));
     // ask permissions (iOS/macOS)
     _messaging.requestPermission();
 
@@ -47,6 +59,21 @@ class _MyAppState extends State<MyApp> {
     // if app was terminated
     _messaging.getInitialMessage().then((msg) {
       if (msg != null) _handleIncomingCall(msg);
+    
+    FirebaseMessaging.onMessage.listen((message) {
+    final t = message.notification?.title;
+    if (t == 'CallRejected') {
+      // tear down Agora
+      _engine.leaveChannel();
+      _engine.release();
+      // pop the call screen if it’s open
+      Navigator.of(navigatorKey.currentContext!).pop();
+      ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
+        const SnackBar(content: Text('Patient rejected the call'))
+      );
+    }
+  });
+
     });
   }
 
@@ -94,6 +121,7 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'E-Clinical',
+      navigatorKey: navigatorKey,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,

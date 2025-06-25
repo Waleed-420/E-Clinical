@@ -49,7 +49,7 @@ class _DoctorLicenseUploadState extends State<DoctorLicenseUpload> {
     try {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('http://192.168.10.10:5000/api/upload-license'),
+        Uri.parse('http://192.168.1.9:5000/api/upload-license'),
       );
 
       request.files.add(
