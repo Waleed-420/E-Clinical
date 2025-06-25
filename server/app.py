@@ -18,7 +18,7 @@ from agora_token_builder import RtcTokenBuilder
 from apscheduler.schedulers.base import SchedulerAlreadyRunningError
 from pytz import timezone
 import time
-
+import traceback
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -81,8 +81,8 @@ def signup():
             }), 400
 
         try:
-            dob = pkt.localize(datetime.strptime(data['dob'], '%Y-%m-%d'))
-            if dob > datetime.now(pkt):
+            dob = datetime.strptime(data['dob'], '%Y-%m-%d')
+            if dob > datetime.now():
                 return jsonify({
                     'success': False,
                     'message': 'Date of birth cannot be in the future.'
@@ -94,7 +94,7 @@ def signup():
             }), 400
 
         hashed_password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt())
-
+        
         user = {
             'name': data['name'].strip(),
             'dob': dob,
@@ -102,15 +102,15 @@ def signup():
             'gender': data['gender'],
             'password': hashed_password.decode('utf-8'),
             'role': data['role'],
-            
-            'created_at': datetime.now(pkt),
-            'updated_at': datetime.now(pkt),
+            'created_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow(),
             'verified': False
         }
 
-        if data['role'].strip().lower() == 'doctor':
-            user['fee'] = 500
+        if data['role'].lower() == 'doctor':
+            user['fees'] = 500
             user['balance'] = 0
+            user['ratings'] = []
         
         result = mongo.db.users.insert_one(user)
         user['_id'] = str(result.inserted_id)
@@ -129,8 +129,6 @@ def signup():
             'success': False,
             'message': f'Internal Server Error: {str(e)}'
         }), 500
-
-
 @app.route('/api/check_email', methods=['POST'])
 def check_email():
     try:
@@ -155,9 +153,10 @@ def check_email():
         }), 200
         
     except Exception as e:
+        traceback.print_exc()  # This will print the exact cause of the 500 error
         return jsonify({
             'success': False,
-            'message': 'An error occurred while checking email'
+            'message': f'An unexpected error occurred: {str(e)}'
         }), 500
 
 @app.route('/api/health', methods=['GET'])
@@ -402,8 +401,9 @@ def get_doctors():
     users = list(mongo.db.users.find(query, {
         '_id': 1,
         'name': 1,
+        'fees': 1,
         'specialization': 1,
-        'schedule': 1
+        'schedule': 1,
     }))
     
     for doc in users:
@@ -426,7 +426,7 @@ def get_available_slots(doctor_id):
         if not ObjectId.is_valid(doctor_id):
             return jsonify({'success': False, 'message': 'Invalid doctor ID format'}), 400
 
-        doctor = mongo.db.doctors.find_one({'_id': ObjectId(doctor_id)})
+        doctor = mongo.db.doctors.find_one({'_id': doctor_id})
         if not doctor:
             return jsonify({'success': False, 'message': 'Doctor not found'}), 404
 
@@ -545,7 +545,7 @@ def book_appointment():
             'time': data['time'],
             'payment': data.get('payment'),  # Optional
             'status': 'booked',
-            'fee': doctor.get('fee'),
+            'fees': doctor.get('fees'),
             'channel': channel,
             'created_at': datetime.now(pkt),
             'updated_at': datetime.now(pkt),
@@ -558,7 +558,7 @@ def book_appointment():
         # update doctor balance
         mongo.db.users.update_one(
             {'_id': ObjectId(data['doctorId'])},
-            {'$inc': {'balance': doctor.get('fee')}}
+            {'$inc': {'balance': doctor.get('fees')}}
         )
 
         return jsonify({
@@ -844,7 +844,7 @@ def check_upcoming_appointments():
             app.logger.error(f"Error in reminder logic: {str(e)}")
 
 try:
-    scheduler.add_job(check_upcoming_appointments, 'interval', minutes=1)
+    scheduler.add_job(check_upcoming_appointments, 'interval', minutes=3)
     scheduler.start()
 except SchedulerAlreadyRunningError:
     pass
@@ -995,6 +995,7 @@ def rate_appointment(appointment_id):
     # Push rating to doctor's rating list
     mongo.db.doctors.update_one(
         {'_id': ObjectId(doctor_id)},
+        # make ratings if not made
         {'$push': {'ratings': rating}}
     )
 

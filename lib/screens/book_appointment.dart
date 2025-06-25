@@ -280,7 +280,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                           children: [
                             Text(doctor['specialization'] ?? ''),
                             Text(
-                              'Fee: ₹${doctor['fee'] ?? 'N/A'}',
+                              'Fee: ₹${doctor['fees']}',
                               style: TextStyle(fontSize: 12),
                             ),
                           ],
