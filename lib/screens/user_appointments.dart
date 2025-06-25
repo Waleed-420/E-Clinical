@@ -5,6 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'video_call_screen.dart';
+import 'package:collection/collection.dart';
+
+class _RxItem {
+  String name;
+  int dosagePerDay;          // 1, 2 or 3
+  int days;                  // number of days the patient takes the drug
+  _RxItem({this.name = '', this.dosagePerDay = 1, this.days = 1});
+}
 
 class UserAppointments extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -135,16 +143,7 @@ class _UserAppointmentsState extends State<UserAppointments> {
                 ),
               );
             }),
-            _buildFeatureButton(
-              context,
-              Icons.medical_services,
-              'Prescription',
-              const Color.fromARGB(255, 102, 228, 215),
-              () => _showFeatureDialog(
-                context,
-                'View prescription from ${appointment['otherName']}',
-              ),
-            ),
+            
             _buildFeatureButton(
               context,
               Icons.upload_file,
@@ -214,7 +213,7 @@ class _UserAppointmentsState extends State<UserAppointments> {
               Icons.video_call,
               'Video Call',
               Colors.purple,
-              videoEnabled ? () => initiateVideoCall(appointment) : null,
+              () => initiateVideoCall(appointment),
             ),
             _buildFeatureButton(
               context,
@@ -231,10 +230,7 @@ class _UserAppointmentsState extends State<UserAppointments> {
               Icons.medical_services,
               'Prescribe',
               Colors.green,
-              () => _showFeatureDialog(
-                context,
-                'Write prescription for ${appointment['otherName']}',
-              ),
+              () => _showPrescriptionDialog(context, appointment),
             ),
           ],
         ),
@@ -281,6 +277,216 @@ class _UserAppointmentsState extends State<UserAppointments> {
     );
   }
 
+  void _showPrescriptionDialog(
+    BuildContext context,
+    Map<String, dynamic> appointment,
+  ) {
+    final formKey = GlobalKey<FormState>();
+    final List<_RxItem> items = [ _RxItem() ];          // at least one row
+    bool noMeds = false;
+    bool saving = false;
+
+    Future<void> _save() async {
+    if (!noMeds && !formKey.currentState!.validate()) return;
+    formKey.currentState?.save();
+    setState(() => saving = true);
+
+    final body = noMeds
+        ? {'noMedication': true}
+        : {
+            'prescription': items
+                .map((e) => {
+                      'medicine': e.name.trim(),
+                      'dosagePerDay': e.dosagePerDay,
+                      'days': e.days,
+                    })
+                .toList(),
+          };
+
+    try {
+      final res = await http.post(
+        Uri.parse(
+          'http://192.168.1.9:5000/api/appointments/${appointment['_id']}/prescription',
+        ),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+      final data = jsonDecode(res.body);
+      if (!mounted) return;
+
+      if (res.statusCode == 200 && data['success'] == true) {
+        Navigator.pop(context);             // close modal
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Prescription saved')),
+        );
+        fetchAppointments();                // refresh list
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(data['message'] ?? 'Save failed')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  showDialog(
+    context: context,
+    barrierDismissible: false,               // can’t dismiss by tapping outside
+    builder: (_) => WillPopScope(            // blocks Android back button
+      onWillPop: () async => false,
+      child: StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Write prescription'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CheckboxListTile(
+                  value: noMeds,
+                  title: const Text('No medication to prescribe'),
+                  onChanged: saving
+                      ? null
+                      : (v) => setState(() {
+                            noMeds = v ?? false;
+                          }),
+                ),
+                if (!noMeds)
+                  Form(
+                    key: formKey,
+                    child: Column(
+                      children: [
+                        ...items.mapIndexed((index, item) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Row(
+                                children: [
+                                  // Medicine name
+                                  Expanded(
+                                    flex: 4,
+                                    child: TextFormField(
+                                      initialValue: item.name,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Medicine',
+                                      ),
+                                      validator: (v) =>
+                                          (v == null || v.trim().isEmpty)
+                                              ? 'Required'
+                                              : null,
+                                      onSaved: (v) => item.name = v!.trim(),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+
+                                  // Dosage per day
+                                  Expanded(
+                                    flex: 2,
+                                    child: DropdownButtonFormField<int>(
+                                      value: item.dosagePerDay,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Times/day',
+                                      ),
+                                      items: const [
+                                        DropdownMenuItem(
+                                            value: 1, child: Text('1×')),
+                                        DropdownMenuItem(
+                                            value: 2, child: Text('2×')),
+                                        DropdownMenuItem(
+                                            value: 3, child: Text('3×')),
+                                      ],
+                                      onChanged: saving
+                                          ? null
+                                          : (v) =>
+                                              item.dosagePerDay = v ?? 1,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+
+                                  // Number of days
+                                  Expanded(
+                                    flex: 2,
+                                    child: TextFormField(
+                                      initialValue: item.days.toString(),
+                                      decoration: const InputDecoration(
+                                        labelText: 'Days',
+                                      ),
+                                      keyboardType: TextInputType.number,
+                                      validator: (v) {
+                                        final n = int.tryParse(v ?? '');
+                                        if (n == null || n <= 0) {
+                                          return '≥1';
+                                        }
+                                        return null;
+                                      },
+                                      onSaved: (v) =>
+                                          item.days = int.parse(v ?? '1'),
+                                    ),
+                                  ),
+
+                                  // Remove row (not for first row)
+                                  if (items.length > 1)
+                                    IconButton(
+                                      icon: const Icon(Icons.close),
+                                      onPressed: saving
+                                          ? null
+                                          : () => setState(
+                                                () => items.removeAt(index),
+                                              ),
+                                    ),
+                                ],
+                              ),
+                            )),
+
+                        // Add-row button
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: saving
+                                ? null
+                                : () => setState(
+                                      () => items.add(_RxItem()),
+                                    ),
+                            icon: const Icon(Icons.add),
+                            label: const Text('Add medicine'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: saving
+                  ? null
+                  : () {
+                      // Force doctor to finish: only allow closing if saved
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Please save the prescription first')),
+                      );
+                    },
+              child: const Text('Back'),
+            ),
+            ElevatedButton(
+              onPressed: saving ? null : _save,
+              child: saving
+                  ? const SizedBox(
+                      width: 20, height: 20, child: CircularProgressIndicator())
+                  : const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
   void _showRatingDialog(
     BuildContext context,
     Map<String, dynamic> appointment,

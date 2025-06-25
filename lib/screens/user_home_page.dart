@@ -139,7 +139,7 @@ class UserHomePage extends StatelessWidget {
                       'Prescription',
                       Colors.green,
                       () =>
-                          _navigateTo(context, const UserPrescriptionScreen()),
+                          _navigateTo(context, UserPrescriptionScreen(userId: user['_id'])),
                     ),
                   ],
                 ),

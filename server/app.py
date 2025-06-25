@@ -23,7 +23,7 @@ import traceback
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
-cred = credentials.Certificate("./serviceAccountKey.json")
+cred = credentials.Certificate("service.json")
 firebase_admin.initialize_app(cred)
 
 AGORA_APP_ID = 'dff72470ec104f92aa6cc17e36337822'
@@ -1075,74 +1075,59 @@ def end_call():
             ))
     return jsonify(success=True), 200
 
+@app.route('/api/appointments/<appt_id>/prescription', methods=['POST'])
+def save_prescription(appt_id):
+    data = request.json
+    appt = mongo.db.appointments.find_one({"_id": ObjectId(appt_id)})
+    if not appt:
+        return jsonify({"success": False, "message": "Appointment not found"}), 404
 
-#lab apis
-@app.route('/api/lab/tests', methods=['POST'])
-def add_lab_test():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'success': False, 'message': 'No data provided'}), 400
+    user_id = appt['userId']
 
-        # Validate fields
-        lab_user_id = data.get('labUserId')
-        test_name = data.get('testName')
-        sample_type = data.get('sampleType')
-        price = data.get('price')
+    if data.get('noMedication'):
+        # Optional: handle "no medication" as needed
+        mongo.db.appointments.update_one(
+            {"_id": ObjectId(appt_id)},
+            {"$set": {"prescription": []}}
+        )
+        return jsonify({"success": True}), 200
 
-        if not lab_user_id or not ObjectId.is_valid(lab_user_id):
-            return jsonify({'success': False, 'message': 'Invalid or missing lab user ID'}), 400
+    items = data.get('prescription')
+    if not items:
+        return jsonify({"success": False, "message": "No prescription data"}), 400
 
-        if not test_name:
-            return jsonify({'success': False, 'message': 'Test name is required'}), 400
+    # Map keys for each item as required
+    formatted = [
+        {
+            "name": x["medicine"],
+            "perdayDosage": x["dosagePerDay"],
+            "totaldays": x["days"]
+        } for x in items
+    ]
 
-        if not sample_type:
-            return jsonify({'success': False, 'message': 'Sample type is required'}), 400
+    mongo.db.appointments.update_one(
+        {"_id": ObjectId(appt_id)},
+        {"$set": {"prescription": formatted}}
+    )
 
-        try:
-            price = float(price)
-        except (ValueError, TypeError):
-            return jsonify({'success': False, 'message': 'Price must be a valid number'}), 400
+    doctor_name = mongo.db.appointments.find_one({"_id": ObjectId(appt_id)})['doctorName']
 
-        # Save test
-        test = {
-            'labUserId': lab_user_id,
-            'testName': test_name,
-            'sampleType': sample_type,
-            'price': price,
-            'createdAt': datetime.now(pkt)
-        }
+    # Optionally, push to user's prescriptions (if you want a user-level history)
+    mongo.db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$push": {"prescriptions": {"doctorName": doctor_name, "items": formatted}}}
+    )
 
-        result = mongo.db.tests.insert_one(test)
+    return jsonify({"success": True})
 
-        return jsonify({
-            'success': True,
-            'message': 'Test added successfully',
-            'testId': str(result.inserted_id)
-        }), 201
+@app.route('/api/users/<user_id>/prescriptions', methods=['GET'])
+def get_user_prescriptions(user_id):
+    user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        return jsonify({"success": False, "message": "User not found"}), 404
 
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'message': f'Server error: {str(e)}'}), 500
-
-
-@app.route('/api/lab/tests/<lab_user_id>', methods=['GET'])
-def get_lab_tests(lab_user_id):
-    try:
-        if not ObjectId.is_valid(lab_user_id):
-            return jsonify({'success': False, 'message': 'Invalid lab user ID'}), 400
-
-        tests = list(mongo.db.tests.find({'labUserId': lab_user_id}))
-        for test in tests:
-            test['_id'] = str(test['_id'])  # Convert ObjectId to string
-
-        return jsonify({'success': True, 'tests': tests}), 200
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'message': f'Server error: {str(e)}'}), 500
+    prescriptions = user.get('prescriptions', [])
+    return jsonify({"success": True, "prescriptions": prescriptions})
 
 
 
