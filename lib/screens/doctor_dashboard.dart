@@ -336,7 +336,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                         if (_newFee >= 500 && _newFee <= 2500) {
                           final response = await http.post(
                             Uri.parse(
-                              'http://192.168.1.9:5000/api/doctor/${widget.user['_id']}/fee',
+                              'http://192.168.1.5:5000/api/doctor/${widget.user['_id']}/fee',
                             ),
                             headers: {'Content-Type': 'application/json'},
                             body: json.encode({'fee': _newFee}),
