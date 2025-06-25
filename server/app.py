@@ -18,7 +18,7 @@ from agora_token_builder import RtcTokenBuilder
 from apscheduler.schedulers.base import SchedulerAlreadyRunningError
 from pytz import timezone
 import time
-
+import traceback
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -82,7 +82,7 @@ def signup():
         
         try:
             dob = datetime.strptime(data['dob'], '%Y-%m-%d')
-            if dob > datetime.now(pkt):
+            if dob > datetime.now():
                 return jsonify({
                     'success': False,
                     'message': 'Date of birth cannot be in the future'
@@ -94,6 +94,7 @@ def signup():
             }), 400
         
         hashed_password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt())
+        
         user = {
             'name': data['name'].strip(),
             'dob': dob,
@@ -101,14 +102,13 @@ def signup():
             'gender': data['gender'],
             'password': hashed_password.decode('utf-8'),
             'role': data['role'],
-            
-            'created_at': datetime.now(pkt),
-            'updated_at': datetime.now(pkt),
+            'created_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow(),
             'verified': False
         }
 
-        if(role ==  'Doctor'):
-            user['fee'] = 500
+        if data['role'].lower() == 'doctor':
+            user['fees'] = 500
             user['balance'] = 0
         
         result = mongo.db.users.insert_one(user)
@@ -126,7 +126,6 @@ def signup():
             'success': False,
             'message': 'An unexpected error occurred. Please try again later.'
         }), 500
-
 @app.route('/api/check_email', methods=['POST'])
 def check_email():
     try:
@@ -151,9 +150,10 @@ def check_email():
         }), 200
         
     except Exception as e:
+        traceback.print_exc()  # This will print the exact cause of the 500 error
         return jsonify({
             'success': False,
-            'message': 'An error occurred while checking email'
+            'message': f'An unexpected error occurred: {str(e)}'
         }), 500
 
 @app.route('/api/health', methods=['GET'])
@@ -840,7 +840,7 @@ def check_upcoming_appointments():
             app.logger.error(f"Error in reminder logic: {str(e)}")
 
 try:
-    scheduler.add_job(check_upcoming_appointments, 'interval', minutes=1)
+    scheduler.add_job(check_upcoming_appointments, 'interval', minutes=3)
     scheduler.start()
 except SchedulerAlreadyRunningError:
     pass

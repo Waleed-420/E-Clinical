@@ -10,7 +10,6 @@ import 'doctor_schedule_setup.dart';
 class DoctorDashboard extends StatefulWidget {
   final Map<String, dynamic> user;
   Map<String, dynamic>? _doctorDetails;
-  bool _isLoading = true;
   List<dynamic> _upcomingAppointments = [];
 
   DoctorDashboard({super.key, required this.user});
@@ -21,7 +20,8 @@ class DoctorDashboard extends StatefulWidget {
 
 class _DoctorDashboardState extends State<DoctorDashboard> {
   int _currentIndex = 0;
-  bool _isVerified = false; // Example verification status
+    bool _isLoading = true;
+bool _isVerified = false; // Example verification status
   final int _monthlyTarget = 200; // Example monthly target
   int _completedAppointments = 156; // Example completed
   int _totalAppointments = 200; // Example total
@@ -35,14 +35,14 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
   void initState() {  
     super.initState();
     _loadData();
-    _fetchDoctorData();
-    _fetchUpcomingAppointments();
-    _pages.addAll([
-      _buildMainDashboard(),
-      BookedAppointmentsPage(user: widget.user),
-      SchedulePage(user: widget.user),
-      PaymentCardPage(user: widget.user),
-    ]);
+    // _fetchDoctorData();
+    // _fetchUpcomingAppointments();
+    // _pages.addAll([
+    //   _buildMainDashboard(),
+    //   BookedAppointmentsPage(user: widget.user),
+    //   SchedulePage(user: widget.user),
+    //   PaymentCardPage(user: widget.user),
+    // ]);
   }
 
   Future<void> _fetchUpcomingAppointments() async {
@@ -86,25 +86,19 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
 
   Future<void> _loadData() async {
     setState(() {
-      widget._isLoading = true;
+      _isLoading = true;
     });
 
-    try {
       await _fetchDoctorData();
       await _fetchUpcomingAppointments();
-    } catch (e) {
-      setState(() {
-      });
-    } finally {
-      setState(() {
-        widget._isLoading = false;
-      });
-    }
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (widget._isLoading) {
+    if (_isLoading) {
     return const Scaffold(
       body: Center(child: CircularProgressIndicator()),
     );
@@ -289,7 +283,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                                     ),
                                   ),
                                   Text(
-                                    '\$${widget._doctorDetails?['balance'].toStringAsFixed(2)}',
+                                    '\$${widget._doctorDetails?['balance']}',
                                     style: const TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold,
