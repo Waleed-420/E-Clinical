@@ -23,7 +23,7 @@ import traceback
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
-cred = credentials.Certificate("service.json")
+cred = credentials.Certificate("serviceKey.json")
 firebase_admin.initialize_app(cred)
 
 AGORA_APP_ID = '93fa8e9ec1464959abd941f1f35b5470'
@@ -41,6 +41,7 @@ pkt = timezone('Asia/Karachi')
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9.+_-]+@[a-zA-Z0-9._-]+\.[a-zA-Z]{2,}$')
 PASSWORD_MIN_LENGTH = 6
 
+# register user
 @app.route('/api/signup', methods=['POST'])
 def signup():
     try:
@@ -129,6 +130,8 @@ def signup():
             'success': False,
             'message': f'Internal Server Error: {str(e)}'
         }), 500
+
+# check email
 @app.route('/api/check_email', methods=['POST'])
 def check_email():
     try:
@@ -159,6 +162,7 @@ def check_email():
             'message': f'An unexpected error occurred: {str(e)}'
         }), 500
 
+# health check
 @app.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({
@@ -168,7 +172,7 @@ def health_check():
         'timestamp': datetime.now(pkt).isoformat()
     }), 200
 
-    
+# login
 @app.route('/api/signin', methods=['POST'])
 def signin():
     try:
@@ -189,7 +193,7 @@ def signin():
     except Exception as e:
         return jsonify({'success': False, 'message': 'Server error'}), 500
 
-
+# tesseract
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 # Email validation regex
@@ -206,6 +210,7 @@ MEDICAL_KEYWORDS = [
     'impression', 'recommendation', 'assessment', 'plan'
 ]
 
+# check if text is medical report
 def is_medical_report(text):
     if not text:
         return False
@@ -216,6 +221,7 @@ def is_medical_report(text):
     has_report_structure = ('report' in text_lower or 'results' in text_lower or 'findings' in text_lower)
     return has_patient_info or (has_medical_terms and has_report_structure)
 
+# extract text from image
 def extract_text_from_image(image_bytes):
     try:
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")  # Force to RGB
@@ -226,6 +232,7 @@ def extract_text_from_image(image_bytes):
     except Exception as e:
         raise Exception(f"Image processing failed: {str(e)}")
 
+# extract text from pdf
 def extract_text_from_pdf(pdf_bytes):
     try:
         images = convert_from_bytes(pdf_bytes)
@@ -237,6 +244,7 @@ def extract_text_from_pdf(pdf_bytes):
     except Exception as e:
         raise Exception(f"PDF processing failed: {str(e)}")
 
+# parse medical report
 def parse_medical_report(text):
     import re
     lines = text.splitlines()
@@ -285,6 +293,7 @@ def parse_medical_report(text):
 
     return report_data
 
+# scan medical report
 @app.route('/api/scan-medical-report', methods=['POST'])
 def scan_medical_report():
     if 'document' not in request.files:
@@ -854,7 +863,7 @@ def start_call():
     data = request.json
     channel_name = data['channelName']
     uid = 0
-    expire_time = int(time.time()) + 1800
+    expire_time = int(time.time()) + 180000
 
     token = RtcTokenBuilder.buildTokenWithUid(
         AGORA_APP_ID, AGORA_APP_CERTIFICATE,
@@ -1137,4 +1146,4 @@ if __name__ == '__main__':
         print("[INFO] Starting scheduler...")
 
     print("[INFO] Starting Flask app...")
-    app.run(host='192.168.1.5', port=5000, debug=True)
+    app.run(host='192.168.1.9', port=5000, debug=True)

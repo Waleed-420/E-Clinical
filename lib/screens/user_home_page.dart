@@ -3,7 +3,6 @@ import 'package:e_clinical/screens/BookTestSplashScreen.dart';
 import 'scan_photo_page.dart';
 import 'user_prescription_screen.dart';
 import 'package:flutter/material.dart';
-import 'book_appointment.dart';
 import 'book_appointment_splashscreen.dart';
 import 'user_reports.dart';
 import 'user_appointments.dart';
