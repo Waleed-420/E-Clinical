@@ -1137,4 +1137,4 @@ if __name__ == '__main__':
         print("[INFO] Starting scheduler...")
 
     print("[INFO] Starting Flask app...")
-    app.run(host='10.8.149.233', port=5000, debug=True)
+    app.run(host='192.168.1.5', port=5000, debug=True)
