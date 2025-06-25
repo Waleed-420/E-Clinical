@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
 
-const appId = "dff72470ec104f92aa6cc17e36337822";
+const appId = "93fa8e9ec1464959abd941f1f35b5470";
 
 class VideoCallScreen extends StatefulWidget {
   final String? channel;
@@ -13,11 +13,11 @@ class VideoCallScreen extends StatefulWidget {
   final String token;
 
   const VideoCallScreen({
-    Key? key,
+    super.key,
     this.channel,
     required this.isCaller,
     required this.token,
-  }) : super(key: key);
+  });
 
   @override
   State<VideoCallScreen> createState() => _VideoCallScreenState();
@@ -227,7 +227,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
               _engine!.release();
               Navigator.pop(context);
               final res = http.post(
-                Uri.parse('http://192.168.1.5:5000/api/end-call'),
+                Uri.parse('http://192.168.1.9:5000/api/end-call'),
                 headers: {'Content-Type': 'application/json'},
                 body: jsonEncode({'channelName': widget.channel}),
               );

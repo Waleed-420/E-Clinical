@@ -48,7 +48,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
     try {
       final response = await http.get(
         Uri.parse(
-          'http://192.168.1.5:5000/api/appointments?doctorId=${widget.user['_id']}&status=booked',
+          'http://192.168.1.9:5000/api/appointments?doctorId=${widget.user['_id']}&status=booked',
         ),
       );
 
@@ -65,7 +65,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
     try {
       final response = await http.get(
         Uri.parse(
-          'http://192.168.1.5:5000/api/doctors?doctorId=${widget.user['_id']}',
+          'http://192.168.1.9:5000/api/doctors?doctorId=${widget.user['_id']}',
         ),
       );
 
@@ -740,7 +740,7 @@ class _PaymentCardPageState extends State<PaymentCardPage> {
                       leading: const Icon(Icons.account_balance_wallet),
                       title: const Text('Available Balance'),
                       trailing: Text(
-                        '\$${widget.user?['balance'].toStringAsFixed(2)}',
+                        '\$${widget.user['balance'].toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
