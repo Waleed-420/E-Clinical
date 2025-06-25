@@ -1019,7 +1019,36 @@ def change_fee(doctor_id):
 
     return jsonify({'success': True, 'message': 'Fee changed successfully'}), 200
 
+@app.route('/api/reject-call', methods=['POST'])
+def reject_call():
+    data = request.get_json()
+    channel_name = data.get('channelName')
+    if not channel_name:
+        return jsonify({'success': False, 'message': 'channelName required'}), 400
 
+    # look up appointment by its _id (which *is* the channelName)
+    appt = mongo.db.appointments.find_one({'_id': ObjectId(channel_name)})
+    if not appt:
+        return jsonify({'success': False, 'message': 'Appointment not found'}), 404
+
+    # find the doctor’s device token
+    doctor = mongo.db.users.find_one({'_id': ObjectId(appt['doctorId'])})
+    doctor_token = doctor.get('deviceToken')
+    if not doctor_token:
+        return jsonify({'success': False, 'message': 'Doctor has no device token'}), 400
+
+    # send a “call rejected” push to the doctor
+    msg = messaging.Message(
+      notification=messaging.Notification(
+        title='CallRejected',
+        body=f"{appt.get('otherName','Patient')} has rejected the call."
+      ),
+      data={'channelName': channel_name},
+      token=doctor_token
+    )
+    messaging.send(msg)
+
+    return jsonify({'success': True}), 200
 
 
 
