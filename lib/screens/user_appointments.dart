@@ -47,7 +47,7 @@ class _UserAppointmentsState extends State<UserAppointments> {
     try {
       final response = await http.get(
         Uri.parse(
-          'http://192.168.1.9:5000/api/user/${widget.user['_id']}/appointments',
+          'http://192.168.1.5:5000/api/user/${widget.user['_id']}/appointments',
         ),
       );
 
@@ -91,7 +91,7 @@ class _UserAppointmentsState extends State<UserAppointments> {
 
   Future<void> initiateVideoCall(Map<String, dynamic> appointment) async {
     final res = await http.post(
-      Uri.parse('http://192.168.1.9:5000/api/start-call'),
+      Uri.parse('http://192.168.1.5:5000/api/start-call'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'channelName': appointment['_id']}),
     );
@@ -552,7 +552,7 @@ class _UserAppointmentsState extends State<UserAppointments> {
                       try {
                         final response = await http.post(
                           Uri.parse(
-                            'http://192.168.1.9:5000/api/appointments/$appointmentId/rate',
+                            'http://192.168.1.5:5000/api/appointments/$appointmentId/rate',
                           ),
                           headers: {'Content-Type': 'application/json'},
                           body: jsonEncode({'rating': rating}),

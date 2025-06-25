@@ -112,7 +112,7 @@ class _MyAppState extends State<MyApp> {
             onPressed: () async {
               // 1) tell your backend the call was rejected
               await http.post(
-                Uri.parse('http://192.168.1.9:5000/api/reject-call'),
+                Uri.parse('http://192.168.1.5:5000/api/reject-call'),
                 headers: {'Content-Type': 'application/json'},
                 body: jsonEncode({'channelName': channelName}),
               );
