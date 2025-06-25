@@ -870,6 +870,8 @@ def start_call():
         channel_name, uid, 1, expire_time
     )
 
+    print(token)
+
     # find appointment through channel name
     appointment = mongo.db.appointments.find_one({'_id': ObjectId(channel_name)})
     if not appointment:
