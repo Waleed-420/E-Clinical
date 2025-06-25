@@ -26,8 +26,8 @@ CORS(app)  # Enable CORS for all routes
 cred = credentials.Certificate("service.json")
 firebase_admin.initialize_app(cred)
 
-AGORA_APP_ID = 'dff72470ec104f92aa6cc17e36337822'
-AGORA_APP_CERTIFICATE = '007eJxTYPj7fo2ZmvXBkz+Svy64FJwp+CzJ87f1PBu1X0kMW1JXex9XYLA0Tku0SLVMTTY0MTOxNLVMTEqxNDFMM0wzNk0yNTE3EFaKzGgIZGQwutPLzMgAgSA+B0OqbnJOZl5mMgMDAE27IW0='
+AGORA_APP_ID = '93fa8e9ec1464959abd941f1f35b5470'
+AGORA_APP_CERTIFICATE = '0e234acb268346fcb53812c2a14b85b7'
 
 # MongoDB configuration
 app.config["MONGO_URI"] = "mongodb://localhost:27017/healthcare_app"
