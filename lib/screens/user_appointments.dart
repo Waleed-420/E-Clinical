@@ -308,7 +308,7 @@ class _UserAppointmentsState extends State<UserAppointments> {
       try {
         final res = await http.post(
           Uri.parse(
-            'http://192.168.1.9:5000/api/appointments/${appointment['_id']}/prescription',
+            'http://192.168.1.5:5000/api/appointments/${appointment['_id']}/prescription',
           ),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode(body),

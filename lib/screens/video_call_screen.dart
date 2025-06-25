@@ -85,7 +85,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
             print("Token privilege will expire, trying to refresh token...");
             try {
               final res = await http.post(
-                Uri.parse('http://192.168.1.9:5000/api/refresh-token'),
+                Uri.parse('http://192.168.1.5:5000/api/refresh-token'),
                 body: jsonEncode({'channelName': widget.channel}),
               );
               print("Refresh token API response: ${res.body}");
