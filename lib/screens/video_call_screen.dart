@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
 
 const appId = "dff72470ec104f92aa6cc17e36337822";
@@ -59,8 +61,17 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
             _remoteUid = null;
           });
         },
+        onTokenPrivilegeWillExpire: (_, __) async {
+          final res = await http.post(
+            Uri.parse('http://192.168.1.9:5000/api/refresh-token'),
+            body: jsonEncode({'channelName': widget.channel}),
+          );
+          final newToken = jsonDecode(res.body)['token'];
+          await _engine.renewToken(newToken);
+        },
       ),
     );
+
 
     await _engine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
     await _engine.enableVideo();
@@ -158,7 +169,14 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
             backgroundColor: Colors.red,
             heroTag: "end",
             onPressed: () {
+              _engine.leaveChannel();
+              _engine.release();
               Navigator.pop(context);
+              final res = http.post(
+                Uri.parse('http://192.168.1.9:5000/api/end-call'),
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode({'channelName': widget.channel}),
+              );
             },
             child: const Icon(Icons.call_end),
           ),
@@ -169,9 +187,16 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    // ignore: deprecated_member_use
+    return WillPopScope(
+    onWillPop: () async {
+      // return false to disable popping
+      return false;
+    },
+    child: Scaffold(
       backgroundColor: Colors.black,
       body: _buildVideoLayout(),
-    );
+    ),
+  );
   }
 }

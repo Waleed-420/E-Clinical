@@ -1,9 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'doctor_detail.dart';
 
 class BookAppointmentScreen extends StatefulWidget {
@@ -87,7 +85,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
 
     try {
       final uri = Uri.parse(
-        'http://192.168.18.130:5000/api/doctors?specialization=${Uri.encodeComponent(_selectedSpecialization!)}',
+        'http://192.168.1.9:5000/api/doctors?specialization=${Uri.encodeComponent(_selectedSpecialization!)}',
       );
       final response = await http.get(uri);
 

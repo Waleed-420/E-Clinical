@@ -50,6 +50,7 @@ dependencies:
   intl: ^0.20.2
   fl_chart: ^1.0.0
   percent_indicator: ^4.2.2
+  firebase_core: ^3.14.0
   
   # charts_flutter: ^0.12.0
   

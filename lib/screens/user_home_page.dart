@@ -10,7 +10,6 @@ import 'user_settings.dart';
 import 'upload_pdf_screen.dart';
 import 'book_test_screen.dart';
 import 'past_reports_screen.dart';
-import './book_appointment_splashscreen.dart';
 
 class UserHomePage extends StatelessWidget {
   final Map<String, dynamic> user;

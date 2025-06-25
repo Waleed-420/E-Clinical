@@ -20,6 +20,7 @@ class DoctorScheduleSetup extends StatefulWidget {
   });
 
   @override
+  // ignore: library_private_types_in_public_api
   _DoctorScheduleSetupState createState() => _DoctorScheduleSetupState();
 }
 
@@ -102,7 +103,7 @@ class _DoctorScheduleSetupState extends State<DoctorScheduleSetup> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.18.130:5000/api/doctor/schedule'),
+        Uri.parse('http://192.168.1.9:5000/api/doctor/schedule'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'doctorId': widget.user['_id'].toString(),
@@ -164,7 +165,7 @@ class _DoctorScheduleSetupState extends State<DoctorScheduleSetup> {
   Future<void> fetchDoctorSchedule() async {
     final doctorId = widget.user['_id'];
     final url = Uri.parse(
-      'http://192.168.18.130:5000/api/doctor/$doctorId/schedule',
+      'http://192.168.1.9:5000/api/doctor/$doctorId/schedule',
     );
 
     try {
@@ -204,8 +205,9 @@ class _DoctorScheduleSetupState extends State<DoctorScheduleSetup> {
           _weeklySchedule.addAll(tempSchedule);
         });
       } else {
-        if (kDebugMode)
+        if (kDebugMode) {
           print('Failed to fetch schedule: ${response.statusCode}');
+        }
       }
     } catch (e) {
       if (kDebugMode) print('Error fetching schedule: $e');

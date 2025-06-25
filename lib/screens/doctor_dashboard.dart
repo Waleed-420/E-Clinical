@@ -6,10 +6,10 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:http/http.dart' as http;
 import 'doctor_schedule_setup.dart';
 
+// ignore: must_be_immutable
 class DoctorDashboard extends StatefulWidget {
   final Map<String, dynamic> user;
   Map<String, dynamic>? _doctorDetails;
-  String? _errorMessage;
   bool _isLoading = true;
   List<dynamic> _upcomingAppointments = [];
 
@@ -21,13 +21,11 @@ class DoctorDashboard extends StatefulWidget {
 
 class _DoctorDashboardState extends State<DoctorDashboard> {
   int _currentIndex = 0;
-  double _balance = 1250.00; // Example balance
   bool _isVerified = false; // Example verification status
-  int _dailyTarget = 8; // Example daily target
-  int _monthlyTarget = 200; // Example monthly target
+  final int _monthlyTarget = 200; // Example monthly target
   int _completedAppointments = 156; // Example completed
   int _totalAppointments = 200; // Example total
-  int _remainingDays = 14; // Example remaining days
+  final int _remainingDays = 14; // Example remaining days
   double _newFee = 500;
 
   final List<Widget> _pages = [];
@@ -50,7 +48,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
     try {
       final response = await http.get(
         Uri.parse(
-          'http://192.168.18.130:5000/api/appointments?doctorId=${widget.user['_id']}&status=booked',
+          'http://192.168.1.9:5000/api/appointments?doctorId=${widget.user['_id']}&status=booked',
         ),
       );
 
@@ -60,16 +58,14 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
           widget._upcomingAppointments = data['appointments'];
         }
       }
-    } catch (e) {
-      widget._errorMessage = 'Failed to load appointments';
-    }
+    } catch (e) {}
   }
 
   Future<void> _fetchDoctorData() async {
     try {
       final response = await http.get(
         Uri.parse(
-          'http://192.168.18.130:5000/api/doctors?doctorId=${widget.user['_id']}',
+          'http://192.168.1.9:5000/api/doctors?doctorId=${widget.user['_id']}',
         ),
       );
 
@@ -82,24 +78,19 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
           });
         }
       }
-    } catch (e) {
-      widget._errorMessage = 'Failed to load doctor details';
-    }
+    } catch (e) {}
   }
 
   Future<void> _loadData() async {
     setState(() {
       widget._isLoading = true;
-      widget._errorMessage = null;
     });
 
     try {
       await _fetchDoctorData();
       await _fetchUpcomingAppointments();
     } catch (e) {
-      setState(() {
-        widget._errorMessage = 'Failed to load dashboard';
-      });
+      setState(() {});
     } finally {
       setState(() {
         widget._isLoading = false;
@@ -298,7 +289,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                               ),
                             ),
                             Text(
-                              '\$${_balance.toStringAsFixed(2)}',
+                              '\$${widget._doctorDetails?['balance'].toStringAsFixed(2)}',
                               style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
@@ -350,7 +341,7 @@ class _DoctorDashboardState extends State<DoctorDashboard> {
                         if (_newFee >= 500 && _newFee <= 2500) {
                           final response = await http.post(
                             Uri.parse(
-                              'http://192.168.18.130:5000/api/doctor/${widget.user['_id']}/fee',
+                              'http://192.168.1.9:5000/api/doctor/${widget.user['_id']}/fee',
                             ),
                             headers: {'Content-Type': 'application/json'},
                             body: json.encode({'fee': _newFee}),
@@ -607,7 +598,6 @@ class _PaymentCardPageState extends State<PaymentCardPage> {
   String _expiryDate = '';
   String _cvv = '';
   String _cardHolder = '';
-  double _balance = 1250.00;
   bool _showWithdrawSuccess = false;
 
   @override
@@ -755,7 +745,7 @@ class _PaymentCardPageState extends State<PaymentCardPage> {
                       leading: const Icon(Icons.account_balance_wallet),
                       title: const Text('Available Balance'),
                       trailing: Text(
-                        '\$${_balance.toStringAsFixed(2)}',
+                        '\$${widget.user?['balance'].toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -775,7 +765,7 @@ class _PaymentCardPageState extends State<PaymentCardPage> {
                     ElevatedButton(
                       onPressed: () {
                         setState(() {
-                          _balance = 0.00;
+                          widget.user['balance'] = 0.00;
                           _showWithdrawSuccess = true;
                         });
                         Future.delayed(const Duration(seconds: 3), () {

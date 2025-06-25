@@ -102,7 +102,7 @@ def signup():
             'gender': data['gender'],
             'password': hashed_password.decode('utf-8'),
             'role': data['role'],
-            'balance': 0,
+            
             'created_at': datetime.now(pkt),
             'updated_at': datetime.now(pkt),
             'verified': False
@@ -110,7 +110,8 @@ def signup():
 
         if data['role'].strip().lower() == 'doctor':
             user['fee'] = 500
-
+            user['balance'] = 0
+        
         result = mongo.db.users.insert_one(user)
         user['_id'] = str(result.inserted_id)
         del user['password']
@@ -500,14 +501,7 @@ def book_appointment():
             return jsonify({'success': False, 'message': 'Invalid doctor ID format'}), 400
 
         # Validate user
-        user = mongo.db.users.find_one({'_id': ObjectId(data['userId'])})
-        if not user:
-            return jsonify({'success': False, 'message': 'User not found'}), 404
-
-        # check user balance 
-        if user.get('balance', 0) < data.get('fee', 0):
-            return jsonify({'success': False, 'message': 'Insufficient balance'}), 400
-
+        
         doctor = mongo.db.users.find_one({'_id': ObjectId(data['doctorId'])})
         if not doctor:
             return jsonify({'success': False, 'message': 'Doctor not found'}), 404
@@ -565,12 +559,6 @@ def book_appointment():
         mongo.db.users.update_one(
             {'_id': ObjectId(data['doctorId'])},
             {'$inc': {'balance': doctor.get('fee')}}
-        )
-
-        # update user balance
-        mongo.db.users.update_one(
-            {'_id': ObjectId(data['userId'])},
-            {'$inc': {'balance': -doctor.get('fee')}}
         )
 
         return jsonify({
@@ -1035,8 +1023,56 @@ def change_fee(doctor_id):
 
     return jsonify({'success': True, 'message': 'Fee changed successfully'}), 200
 
+@app.route('/api/reject-call', methods=['POST'])
+def reject_call():
+    data = request.get_json()
+    channel_name = data.get('channelName')
+    if not channel_name:
+        return jsonify({'success': False, 'message': 'channelName required'}), 400
 
+    # look up appointment by its _id (which *is* the channelName)
+    appt = mongo.db.appointments.find_one({'_id': ObjectId(channel_name)})
+    if not appt:
+        return jsonify({'success': False, 'message': 'Appointment not found'}), 404
 
+    # find the doctor’s device token
+    doctor = mongo.db.users.find_one({'_id': ObjectId(appt['doctorId'])})
+    doctor_token = doctor.get('deviceToken')
+    if not doctor_token:
+        return jsonify({'success': False, 'message': 'Doctor has no device token'}), 400
+
+    # send a “call rejected” push to the doctor
+    msg = messaging.Message(
+      notification=messaging.Notification(
+        title='CallRejected',
+        body=f"{appt.get('otherName','Patient')} has rejected the call."
+      ),
+      data={'channelName': channel_name},
+      token=doctor_token
+    )
+    messaging.send(msg)
+
+    return jsonify({'success': True}), 200
+
+@app.route('/api/end-call', methods=['POST'])
+def end_call():
+    channel = request.json.get('channelName')
+    appt = mongo.db.appointments.find_one({'_id': ObjectId(channel)})
+    if not appt: return jsonify(success=False), 404
+    # find both user & doctor tokens
+    user = mongo.db.users.find_one({'_id': ObjectId(appt['userId'])})
+    doc  = mongo.db.users.find_one({'_id': ObjectId(appt['doctorId'])})
+    for recipient in (user, doc):
+        if recipient and recipient.get('deviceToken'):
+            messaging.send(messaging.Message(
+                notification=messaging.Notification(
+                  title='CallEnded', 
+                  body='The other party has ended the call.'
+                ),
+                data={'channelName': channel},
+                token=recipient['deviceToken'],
+            ))
+    return jsonify(success=True), 200
 
 
 #lab apis
@@ -1115,4 +1151,4 @@ if __name__ == '__main__':
         print("[INFO] Starting scheduler...")
 
     print("[INFO] Starting Flask app...")
-    app.run(host='192.168.18.130', port=5000, debug=True)
+    app.run(host='192.168.1.9', port=5000, debug=True)
