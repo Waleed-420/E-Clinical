@@ -1108,10 +1108,12 @@ def save_prescription(appt_id):
         {"$set": {"prescription": formatted}}
     )
 
+    doctor_name = mongo.db.appointments.find_one({"_id": ObjectId(appt_id)})['doctorName']
+
     # Optionally, push to user's prescriptions (if you want a user-level history)
     mongo.db.users.update_one(
         {"_id": ObjectId(user_id)},
-        {"$push": {"prescriptions": {"apptId": appt_id, "items": formatted}}}
+        {"$push": {"prescriptions": {"doctorName": doctor_name, "items": formatted}}}
     )
 
     return jsonify({"success": True})

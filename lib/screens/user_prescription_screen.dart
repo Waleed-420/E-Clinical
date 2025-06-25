@@ -85,7 +85,7 @@ class _UserPrescriptionScreenState extends State<UserPrescriptionScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              "Appointment: ${pres['apptId'] ?? 'N/A'}",
+                              "Appointment with ${pres['doctorName'] ?? 'N/A'}",
                               style: theme.textTheme.titleSmall?.copyWith(
                                 color: theme.primaryColor,
                                 fontWeight: FontWeight.bold,
