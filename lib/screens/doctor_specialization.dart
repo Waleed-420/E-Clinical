@@ -191,7 +191,7 @@ class _DoctorSpecializationScreenState
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                   child: Text(
-                    _selectedSpecialization == null ? 'Continue' : 'Change',
+                    _selectedSpecialization == null ? 'Continue' : 'Save',
                   ),
                 ),
               ),

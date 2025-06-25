@@ -138,16 +138,7 @@ class _UserAppointmentsState extends State<UserAppointments> {
                 ),
               );
             }),
-            _buildFeatureButton(
-              context,
-              Icons.medical_services,
-              'Prescription',
-              const Color.fromARGB(255, 102, 228, 215),
-              () => _showFeatureDialog(
-                context,
-                'View prescription from ${appointment['otherName']}',
-              ),
-            ),
+            
             _buildFeatureButton(
               context,
               Icons.upload_file,
@@ -217,7 +208,7 @@ class _UserAppointmentsState extends State<UserAppointments> {
               Icons.video_call,
               'Video Call',
               Colors.purple,
-              videoEnabled ? () => initiateVideoCall(appointment) : null,
+              () => initiateVideoCall(appointment),
             ),
             _buildFeatureButton(
               context,
@@ -234,10 +225,7 @@ class _UserAppointmentsState extends State<UserAppointments> {
               Icons.medical_services,
               'Prescribe',
               Colors.green,
-              () => _showFeatureDialog(
-                context,
-                'Write prescription for ${appointment['otherName']}',
-              ),
+              () => _showPrescriptionForm(context, appointment),
             ),
           ],
         ),
@@ -284,6 +272,134 @@ class _UserAppointmentsState extends State<UserAppointments> {
     );
   }
 
+  void _showPrescriptionForm(BuildContext context, Map<String, dynamic> appointment) {
+  final TextEditingController _medicationController = TextEditingController();
+  final TextEditingController _dosageController = TextEditingController();
+  final TextEditingController _instructionsController = TextEditingController();
+  final TextEditingController _notesController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    builder: (context) {
+      return Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Write Prescription for ${appointment['otherName']}',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _medicationController,
+                  decoration: const InputDecoration(
+                    labelText: 'Medication',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter medication name';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _dosageController,
+                  decoration: const InputDecoration(
+                    labelText: 'Dosage',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter dosage';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _instructionsController,
+                  decoration: const InputDecoration(
+                    labelText: 'Instructions',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter instructions';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _notesController,
+                  decoration: const InputDecoration(
+                    labelText: 'Additional Notes (Optional)',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () async {
+                        if (_formKey.currentState!.validate()) {
+                          // Here you would typically send the prescription to your backend
+                          try {
+                            // Simulate API call
+                            await Future.delayed(const Duration(seconds: 1));
+                            
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Prescription saved successfully!'),
+                              ),
+                            );
+                            Navigator.pop(context);
+                          } catch (e) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Error saving prescription: $e'),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      child: const Text('Save Prescription'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
   void _showRatingDialog(
     BuildContext context,
     Map<String, dynamic> appointment,
