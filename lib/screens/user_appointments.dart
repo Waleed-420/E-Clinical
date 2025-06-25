@@ -9,8 +9,8 @@ import 'package:collection/collection.dart';
 
 class _RxItem {
   String name;
-  int dosagePerDay;          // 1, 2 or 3
-  int days;                  // number of days the patient takes the drug
+  int dosagePerDay; // 1, 2 or 3
+  int days; // number of days the patient takes the drug
   _RxItem({this.name = '', this.dosagePerDay = 1, this.days = 1});
 }
 
@@ -47,7 +47,7 @@ class _UserAppointmentsState extends State<UserAppointments> {
     try {
       final response = await http.get(
         Uri.parse(
-          'http://192.168.1.9:5000/api/user/${widget.user['_id']}/appointments',
+          'http://192.168.1.5:5000/api/user/${widget.user['_id']}/appointments',
         ),
       );
 
@@ -91,16 +91,13 @@ class _UserAppointmentsState extends State<UserAppointments> {
 
   Future<void> initiateVideoCall(Map<String, dynamic> appointment) async {
     final res = await http.post(
-      Uri.parse('http://192.168.1.9:5000/api/start-call'),
+      Uri.parse('http://192.168.1.5:5000/api/start-call'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'channelName': appointment['_id'],
-      }),
+      body: jsonEncode({'channelName': appointment['_id']}),
     );
     final data = jsonDecode(res.body);
     if (!mounted) return;
     if (data['success'] == true) {
-
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -146,7 +143,7 @@ class _UserAppointmentsState extends State<UserAppointments> {
                 ),
               );
             }),
-            
+
             _buildFeatureButton(
               context,
               Icons.upload_file,
@@ -285,87 +282,91 @@ class _UserAppointmentsState extends State<UserAppointments> {
     Map<String, dynamic> appointment,
   ) {
     final formKey = GlobalKey<FormState>();
-    final List<_RxItem> items = [ _RxItem() ];          // at least one row
+    final List<_RxItem> items = [_RxItem()]; // at least one row
     bool noMeds = false;
     bool saving = false;
 
     Future<void> _save() async {
-    if (!noMeds && !formKey.currentState!.validate()) return;
-    formKey.currentState?.save();
-    setState(() => saving = true);
+      if (!noMeds && !formKey.currentState!.validate()) return;
+      formKey.currentState?.save();
+      setState(() => saving = true);
 
-    final body = noMeds
-        ? {'noMedication': true}
-        : {
-            'prescription': items
-                .map((e) => {
+      final body = noMeds
+          ? {'noMedication': true}
+          : {
+              'prescription': items
+                  .map(
+                    (e) => {
                       'medicine': e.name.trim(),
                       'dosagePerDay': e.dosagePerDay,
                       'days': e.days,
-                    })
-                .toList(),
-          };
+                    },
+                  )
+                  .toList(),
+            };
 
-    try {
-      final res = await http.post(
-        Uri.parse(
-          'http://192.168.1.9:5000/api/appointments/${appointment['_id']}/prescription',
-        ),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(body),
-      );
-      final data = jsonDecode(res.body);
-      if (!mounted) return;
+      try {
+        final res = await http.post(
+          Uri.parse(
+            'http://192.168.1.9:5000/api/appointments/${appointment['_id']}/prescription',
+          ),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        );
+        final data = jsonDecode(res.body);
+        if (!mounted) return;
 
-      if (res.statusCode == 200 && data['success'] == true) {
-        Navigator.pop(context);             // close modal
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Prescription saved')),
-        );
-        fetchAppointments();                // refresh list
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(data['message'] ?? 'Save failed')),
-        );
+        if (res.statusCode == 200 && data['success'] == true) {
+          Navigator.pop(context); // close modal
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Prescription saved')));
+          fetchAppointments(); // refresh list
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(data['message'] ?? 'Save failed')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        }
+      } finally {
+        if (mounted) setState(() => saving = false);
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => saving = false);
     }
-  }
 
-  showDialog(
-    context: context,
-    barrierDismissible: false,               // can’t dismiss by tapping outside
-    builder: (_) => WillPopScope(            // blocks Android back button
-      onWillPop: () async => false,
-      child: StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Write prescription'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CheckboxListTile(
-                  value: noMeds,
-                  title: const Text('No medication to prescribe'),
-                  onChanged: saving
-                      ? null
-                      : (v) => setState(() {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // can’t dismiss by tapping outside
+      builder: (_) => WillPopScope(
+        // blocks Android back button
+        onWillPop: () async => false,
+        child: StatefulBuilder(
+          builder: (context, setState) => AlertDialog(
+            title: const Text('Write prescription'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CheckboxListTile(
+                    value: noMeds,
+                    title: const Text('No medication to prescribe'),
+                    onChanged: saving
+                        ? null
+                        : (v) => setState(() {
                             noMeds = v ?? false;
                           }),
-                ),
-                if (!noMeds)
-                  Form(
-                    key: formKey,
-                    child: Column(
-                      children: [
-                        ...items.mapIndexed((index, item) => Padding(
+                  ),
+                  if (!noMeds)
+                    Form(
+                      key: formKey,
+                      child: Column(
+                        children: [
+                          ...items.mapIndexed(
+                            (index, item) => Padding(
                               padding: const EdgeInsets.only(bottom: 12),
                               child: Row(
                                 children: [
@@ -379,8 +380,8 @@ class _UserAppointmentsState extends State<UserAppointments> {
                                       ),
                                       validator: (v) =>
                                           (v == null || v.trim().isEmpty)
-                                              ? 'Required'
-                                              : null,
+                                          ? 'Required'
+                                          : null,
                                       onSaved: (v) => item.name = v!.trim(),
                                     ),
                                   ),
@@ -396,16 +397,21 @@ class _UserAppointmentsState extends State<UserAppointments> {
                                       ),
                                       items: const [
                                         DropdownMenuItem(
-                                            value: 1, child: Text('1×')),
+                                          value: 1,
+                                          child: Text('1×'),
+                                        ),
                                         DropdownMenuItem(
-                                            value: 2, child: Text('2×')),
+                                          value: 2,
+                                          child: Text('2×'),
+                                        ),
                                         DropdownMenuItem(
-                                            value: 3, child: Text('3×')),
+                                          value: 3,
+                                          child: Text('3×'),
+                                        ),
                                       ],
                                       onChanged: saving
                                           ? null
-                                          : (v) =>
-                                              item.dosagePerDay = v ?? 1,
+                                          : (v) => item.dosagePerDay = v ?? 1,
                                     ),
                                   ),
                                   const SizedBox(width: 8),
@@ -438,58 +444,62 @@ class _UserAppointmentsState extends State<UserAppointments> {
                                       onPressed: saving
                                           ? null
                                           : () => setState(
-                                                () => items.removeAt(index),
-                                              ),
+                                              () => items.removeAt(index),
+                                            ),
                                     ),
                                 ],
                               ),
-                            )),
-
-                        // Add-row button
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton.icon(
-                            onPressed: saving
-                                ? null
-                                : () => setState(
-                                      () => items.add(_RxItem()),
-                                    ),
-                            icon: const Icon(Icons.add),
-                            label: const Text('Add medicine'),
+                            ),
                           ),
-                        ),
-                      ],
+
+                          // Add-row button
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: saving
+                                  ? null
+                                  : () => setState(() => items.add(_RxItem())),
+                              icon: const Icon(Icons.add),
+                              label: const Text('Add medicine'),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
+            actions: [
+              TextButton(
+                onPressed: saving
+                    ? null
+                    : () {
+                        // Force doctor to finish: only allow closing if saved
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please save the prescription first'),
+                          ),
+                        );
+                      },
+                child: const Text('Back'),
+              ),
+              ElevatedButton(
+                onPressed: saving ? null : _save,
+                child: saving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(),
+                      )
+                    : const Text('Save'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: saving
-                  ? null
-                  : () {
-                      // Force doctor to finish: only allow closing if saved
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Please save the prescription first')),
-                      );
-                    },
-              child: const Text('Back'),
-            ),
-            ElevatedButton(
-              onPressed: saving ? null : _save,
-              child: saving
-                  ? const SizedBox(
-                      width: 20, height: 20, child: CircularProgressIndicator())
-                  : const Text('Save'),
-            ),
-          ],
         ),
       ),
-    ),
-  );
-}
+    );
+  }
+
   void _showRatingDialog(
     BuildContext context,
     Map<String, dynamic> appointment,
@@ -542,7 +552,8 @@ class _UserAppointmentsState extends State<UserAppointments> {
                       try {
                         final response = await http.post(
                           Uri.parse(
-                              'http://192.168.1.9:5000/api/appointments/$appointmentId/rate'),
+                            'http://192.168.1.5:5000/api/appointments/$appointmentId/rate',
+                          ),
                           headers: {'Content-Type': 'application/json'},
                           body: jsonEncode({'rating': rating}),
                         );
@@ -550,7 +561,8 @@ class _UserAppointmentsState extends State<UserAppointments> {
                         final data = jsonDecode(response.body);
                         if (!mounted) return;
 
-                        if (response.statusCode == 200 && data['success'] == true) {
+                        if (response.statusCode == 200 &&
+                            data['success'] == true) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
@@ -562,14 +574,16 @@ class _UserAppointmentsState extends State<UserAppointments> {
                           fetchAppointments(); // Refresh list to show new rating
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(data['message'] ?? 'Rating failed')),
+                            SnackBar(
+                              content: Text(data['message'] ?? 'Rating failed'),
+                            ),
                           );
                         }
                       } catch (e) {
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error: $e')),
-                          );
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text('Error: $e')));
                         }
                       }
                     },
@@ -764,7 +778,11 @@ class _UserAppointmentsState extends State<UserAppointments> {
                             const SizedBox(height: 8),
                             Row(
                               children: [
-                                const Icon(Icons.star, size: 18, color: Colors.amber),
+                                const Icon(
+                                  Icons.star,
+                                  size: 18,
+                                  color: Colors.amber,
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
                                   'Rated: ${(appt['rating'] as num).toDouble().toStringAsFixed(1)} stars',

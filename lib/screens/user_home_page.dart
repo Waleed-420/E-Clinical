@@ -1,12 +1,14 @@
+import 'package:e_clinical/screens/BookTestSplashScreen.dart';
+
 import 'scan_photo_page.dart';
 import 'user_prescription_screen.dart';
 import 'package:flutter/material.dart';
 import 'book_appointment.dart';
+import 'book_appointment_splashscreen.dart';
 import 'user_reports.dart';
 import 'user_appointments.dart';
 import 'user_settings.dart';
 import 'upload_pdf_screen.dart';
-import 'book_test_screen.dart';
 import 'past_reports_screen.dart';
 
 class UserHomePage extends StatelessWidget {
@@ -109,7 +111,10 @@ class UserHomePage extends StatelessWidget {
                       Icons.medical_services,
                       'Book Test',
                       colorScheme.primary,
-                      () => _navigateTo(context, const BookTestScreen()),
+                      () => _navigateTo(
+                        context,
+                        BookTestSplashScreen(user: user),
+                      ),
                     ),
                     _buildActionCard(
                       context,
@@ -118,7 +123,7 @@ class UserHomePage extends StatelessWidget {
                       colorScheme.secondary,
                       () => _navigateTo(
                         context,
-                        BookAppointmentScreen(user: user),
+                        BookAppointmentSplashScreen(user: user),
                       ),
                     ),
                     _buildActionCard(
@@ -169,7 +174,6 @@ class UserHomePage extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              // ignore: deprecated_member_use
               color: color.withOpacity(0.2),
               shape: BoxShape.circle,
             ),
@@ -212,7 +216,6 @@ class UserHomePage extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  // ignore: deprecated_member_use
                   color: color.withOpacity(isDarkMode ? 0.3 : 0.2),
                   shape: BoxShape.circle,
                 ),

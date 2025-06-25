@@ -20,19 +20,18 @@ class DoctorDashboard extends StatefulWidget {
 
 class _DoctorDashboardState extends State<DoctorDashboard> {
   int _currentIndex = 0;
-    bool _isLoading = true;
-bool _isVerified = false; // Example verification status
+  bool _isLoading = true;
+  bool _isVerified = false; // Example verification status
   final int _monthlyTarget = 200; // Example monthly target
   int _completedAppointments = 156; // Example completed
   int _totalAppointments = 200; // Example total
   final int _remainingDays = 14; // Example remaining days
   double _newFee = 500;
 
-
   final List<Widget> _pages = [];
 
   @override
-  void initState() {  
+  void initState() {
     super.initState();
     _loadData();
     // _fetchDoctorData();
@@ -49,7 +48,7 @@ bool _isVerified = false; // Example verification status
     try {
       final response = await http.get(
         Uri.parse(
-          'http://192.168.1.9:5000/api/appointments?doctorId=${widget.user['_id']}&status=booked',
+          'http://192.168.1.5:5000/api/appointments?doctorId=${widget.user['_id']}&status=booked',
         ),
       );
 
@@ -59,15 +58,14 @@ bool _isVerified = false; // Example verification status
           widget._upcomingAppointments = data['appointments'];
         }
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   Future<void> _fetchDoctorData() async {
     try {
       final response = await http.get(
         Uri.parse(
-          'http://192.168.1.9:5000/api/doctors?doctorId=${widget.user['_id']}',
+          'http://192.168.1.5:5000/api/doctors?doctorId=${widget.user['_id']}',
         ),
       );
 
@@ -80,8 +78,7 @@ bool _isVerified = false; // Example verification status
           });
         }
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   Future<void> _loadData() async {
@@ -89,8 +86,8 @@ bool _isVerified = false; // Example verification status
       _isLoading = true;
     });
 
-      await _fetchDoctorData();
-      await _fetchUpcomingAppointments();
+    await _fetchDoctorData();
+    await _fetchUpcomingAppointments();
     setState(() {
       _isLoading = false;
     });
@@ -99,32 +96,30 @@ bool _isVerified = false; // Example verification status
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
-    );
-  }
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
-  Widget currentPage;
-  switch (_currentIndex) {
-    case 0:
-      currentPage = _buildMainDashboard();
-      break;
-    case 1:
-      currentPage = BookedAppointmentsPage(user: widget.user);
-      break;
-    case 2:
-      currentPage = SchedulePage(user: widget.user);
-      break;
-    case 3:
-      currentPage = PaymentCardPage(user: widget.user);
-      break;
-    default:
-      currentPage = _buildMainDashboard();
-  }
+    Widget currentPage;
+    switch (_currentIndex) {
+      case 0:
+        currentPage = _buildMainDashboard();
+        break;
+      case 1:
+        currentPage = BookedAppointmentsPage(user: widget.user);
+        break;
+      case 2:
+        currentPage = SchedulePage(user: widget.user);
+        break;
+      case 3:
+        currentPage = PaymentCardPage(user: widget.user);
+        break;
+      default:
+        currentPage = _buildMainDashboard();
+    }
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
-      
+
       body: currentPage,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
@@ -137,14 +132,19 @@ bool _isVerified = false; // Example verification status
           });
         },
         items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Dashboard'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.home), label: 'Dashboard'),
+            icon: Icon(Icons.calendar_today),
+            label: 'Appointments',
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_today), label: 'Appointments'),
+            icon: Icon(Icons.schedule),
+            label: 'Schedule',
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.schedule), label: 'Schedule'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.credit_card), label: 'Payments'),
+            icon: Icon(Icons.credit_card),
+            label: 'Payments',
+          ),
         ],
       ),
     );
@@ -158,10 +158,7 @@ bool _isVerified = false; // Example verification status
         title: const Text('Doctor Dashboard'),
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications),
-            onPressed: () {},
-          ),
+          IconButton(icon: const Icon(Icons.notifications), onPressed: () {}),
         ],
       ),
       body: SingleChildScrollView(
@@ -171,230 +168,239 @@ bool _isVerified = false; // Example verification status
           children: [
             // … the Profile Card and Milestone Card …
             Card(
-                    elevation: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                'Dr. ${widget.user['name']?.split(' ').first ?? ''}',
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const Spacer(),
-                              Chip(
-                                label: Text(
-                                  _isVerified
-                                      ? 'Verified'
-                                      : 'Pending Verification',
-                                  style: TextStyle(
-                                    color: _isVerified
-                                        ? Colors.white
-                                        : Colors.black,
-                                  ),
-                                ),
-                                backgroundColor: _isVerified
-                                    ? Colors.green
-                                    : Colors.yellow,
-                              ),
-                            ],
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'Dr. ${widget.user['name']?.split(' ').first ?? ''}',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Specialization: ${widget._doctorDetails?['specialization'] ?? 'Not Set'}',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          if (widget._doctorDetails?['ratings'] != null &&
-                              widget._doctorDetails!['ratings'] is List &&
-                              (widget._doctorDetails!['ratings'] as List).isNotEmpty) ...[
-                            Row(
-                              children: [
-                                const Icon(Icons.star, color: Colors.amber, size: 20),
-                                const SizedBox(width: 6),
-                                () {
-                                  final ratings = widget._doctorDetails?['ratings'] as List? ?? [];
-                                  if (ratings.isEmpty) {
-                                    return const Text(
-                                      'Not rated yet',
-                                      style: TextStyle(fontSize: 16, color: Colors.grey),
-                                    );
-                                  }
-
-                                  final total = ratings.fold<int>(0, (sum, r) => sum + (r as int));
-                                  final avg = (total / ratings.length).round();
-
-                                  return Row(
-                                    children: [
-                                      // Stars
-                                      Row(
-                                        children: List.generate(5, (i) {
-                                          return Icon(
-                                            i < avg ? Icons.star : Icons.star_border,
-                                            color: Colors.amber,
-                                            size: 20,
-                                          );
-                                        }),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        '($avg / 5 from ${ratings.length} ratings)',
-                                        style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                                      ),
-                                    ],
-                                  );
-                                }(),
-                              ],
-                            ),
-
-                          ] else ...[
-                            Row(
-                              children: const [
-                                Icon(Icons.star_border, color: Colors.grey, size: 20),
-                                SizedBox(width: 6),
-                                Text(
-                                  'Not rated yet',
-                                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                                ),
-                              ],
-                            ),
-                          ],
-                          const SizedBox(height: 16),
-                          Card(
-                            elevation: 2,
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text(
-                                    'Available Balance',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    '\$${widget._doctorDetails?['balance']}',
-                                    style: const TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF15A196),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                        ],
-                      ),
-                    ),
-                  ),Card(
-  elevation: 2,
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(12),
-  ),
-  child: Padding(
-    padding: const EdgeInsets.all(16.0),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Update Consultation Fee',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-        TextFormField(
-          decoration: const InputDecoration(
-            labelText: 'Enter Fee (500 - 2500)',
-            prefixIcon: Icon(Icons.attach_money),
-            border: OutlineInputBorder(),
-          ),
-          keyboardType: TextInputType.number,
-          onChanged: (value) {
-            setState(() {
-              _newFee = double.tryParse(value) ?? 0;
-            });
-          },
-        ),
-        const SizedBox(height: 16),
-        ElevatedButton(
-          onPressed: () async {
-            if (_newFee >= 500 && _newFee <= 2500) {
-              final response = await http.post(
-                Uri.parse('http://192.168.1.9:5000/api/doctor/${widget.user['_id']}/fee'),
-                headers: {'Content-Type': 'application/json'},
-                body: json.encode({'fee': _newFee}),
-              );
-
-              final result = json.decode(response.body);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(result['message'] ?? 'Unknown response')),
-              );
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Fee must be between 500 and 2500')),
-              );
-            }
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF15A196),
-            minimumSize: const Size(double.infinity, 48),
-          ),
-          child: const Text('Update Fee'),
-        ),
-      ],
-    ),
-  ),
-),
-                  const SizedBox(height: 24),
-                  if (widget._upcomingAppointments.isNotEmpty) ...[
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Upcoming Appointments',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
                         ),
-                      ),
+                        const Spacer(),
+                        Chip(
+                          label: Text(
+                            _isVerified ? 'Verified' : 'Pending Verification',
+                            style: TextStyle(
+                              color: _isVerified ? Colors.white : Colors.black,
+                            ),
+                          ),
+                          backgroundColor: _isVerified
+                              ? Colors.green
+                              : Colors.yellow,
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
-                    ...widget._upcomingAppointments
-                        .take(3)
-                        .map(
-                          (appointment) => Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: ListTile(
-                              title: Text(
-                                'Patient: ${appointment['patientName'] ?? 'Anonymous'}',
-                              ),
-                              subtitle: Text(
-                                '${appointment['date']} at ${appointment['time']}',
-                              ),
-                              trailing: const Icon(Icons.calendar_today),
-                            ),
-                          ),
-                        ),
-                    if (widget._upcomingAppointments.length > 3)
-                      TextButton(
-                        onPressed: () {},
-                        child: const Text('View All Appointments'),
+                    Text(
+                      'Specialization: ${widget._doctorDetails?['specialization'] ?? 'Not Set'}',
+                      style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                    ),
+                    const SizedBox(height: 8),
+                    if (widget._doctorDetails?['ratings'] != null &&
+                        widget._doctorDetails!['ratings'] is List &&
+                        (widget._doctorDetails!['ratings'] as List)
+                            .isNotEmpty) ...[
+                      Row(
+                        children: [
+                          const Icon(Icons.star, color: Colors.amber, size: 20),
+                          const SizedBox(width: 6),
+                          () {
+                            final ratings =
+                                widget._doctorDetails?['ratings'] as List? ??
+                                [];
+                            if (ratings.isEmpty) {
+                              return const Text(
+                                'Not rated yet',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey,
+                                ),
+                              );
+                            }
+
+                            final total = ratings.fold<int>(
+                              0,
+                              (sum, r) => sum + (r as int),
+                            );
+                            final avg = (total / ratings.length).round();
+
+                            return Row(
+                              children: [
+                                // Stars
+                                Row(
+                                  children: List.generate(5, (i) {
+                                    return Icon(
+                                      i < avg ? Icons.star : Icons.star_border,
+                                      color: Colors.amber,
+                                      size: 20,
+                                    );
+                                  }),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '($avg / 5 from ${ratings.length} ratings)',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[700],
+                                  ),
+                                ),
+                              ],
+                            );
+                          }(),
+                        ],
                       ),
-                    const SizedBox(height: 24),
+                    ] else ...[
+                      Row(
+                        children: const [
+                          Icon(Icons.star_border, color: Colors.grey, size: 20),
+                          SizedBox(width: 6),
+                          Text(
+                            'Not rated yet',
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    Card(
+                      elevation: 2,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Available Balance',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              '\$${widget._doctorDetails?['balance']}',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF15A196),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
+                ),
+              ),
+            ),
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Update Consultation Fee',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      decoration: const InputDecoration(
+                        labelText: 'Enter Fee (500 - 2500)',
+                        prefixIcon: Icon(Icons.attach_money),
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.number,
+                      onChanged: (value) {
+                        setState(() {
+                          _newFee = double.tryParse(value) ?? 0;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () async {
+                        if (_newFee >= 500 && _newFee <= 2500) {
+                          final response = await http.post(
+                            Uri.parse(
+                              'http://192.168.1.9:5000/api/doctor/${widget.user['_id']}/fee',
+                            ),
+                            headers: {'Content-Type': 'application/json'},
+                            body: json.encode({'fee': _newFee}),
+                          );
+
+                          final result = json.decode(response.body);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                result['message'] ?? 'Unknown response',
+                              ),
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Fee must be between 500 and 2500'),
+                            ),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF15A196),
+                        minimumSize: const Size(double.infinity, 48),
+                      ),
+                      child: const Text('Update Fee'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            if (widget._upcomingAppointments.isNotEmpty) ...[
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Upcoming Appointments',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...widget._upcomingAppointments
+                  .take(3)
+                  .map(
+                    (appointment) => Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        title: Text(
+                          'Patient: ${appointment['patientName'] ?? 'Anonymous'}',
+                        ),
+                        subtitle: Text(
+                          '${appointment['date']} at ${appointment['time']}',
+                        ),
+                        trailing: const Icon(Icons.calendar_today),
+                      ),
+                    ),
+                  ),
+              if (widget._upcomingAppointments.length > 3)
+                TextButton(
+                  onPressed: () {},
+                  child: const Text('View All Appointments'),
+                ),
+              const SizedBox(height: 24),
+            ],
             // Progress Chart using fl_chart
             Card(
               elevation: 4,
@@ -460,9 +466,7 @@ bool _isVerified = false; // Example verification status
                       children: [
                         Text(
                           '${(progress * 100).toStringAsFixed(1)}% completed',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         if (progress >= 1.0)
                           ElevatedButton(
@@ -474,7 +478,9 @@ bool _isVerified = false; // Example verification status
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.green,
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
                             ),
                             child: const Text('Reset'),
                           ),
@@ -496,22 +502,13 @@ bool _isVerified = false; // Example verification status
         Container(
           width: 16,
           height: 16,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12),
-        ),
+        Text(label, style: const TextStyle(fontSize: 12)),
         Text(
           value.toString(),
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
       ],
     );
@@ -634,7 +631,7 @@ class _PaymentCardPageState extends State<PaymentCardPage> {
                   ],
                 ),
               ),
-            
+
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -703,7 +700,9 @@ class _PaymentCardPageState extends State<PaymentCardPage> {
                       onPressed: () {
                         // Save card info
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Card information saved')),
+                          const SnackBar(
+                            content: Text('Card information saved'),
+                          ),
                         );
                       },
                       style: ElevatedButton.styleFrom(
@@ -716,9 +715,9 @@ class _PaymentCardPageState extends State<PaymentCardPage> {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(

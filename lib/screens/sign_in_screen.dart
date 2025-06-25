@@ -26,27 +26,24 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _isLoading = false;
 
   Future<void> saveToken(Map<String, dynamic> user) async {
-  String? token = await FirebaseMessaging.instance.getToken();
+    String? token = await FirebaseMessaging.instance.getToken();
 
-  if (kDebugMode) {
-    print("Token: $token");
+    if (kDebugMode) {
+      print("Token: $token");
+    }
+
+    await http.post(
+      Uri.parse('http://192.168.1.5:5000/api/save-token'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'userId': user['_id'], 'deviceToken': token}),
+    );
   }
 
-  await http.post(
-    Uri.parse('http://192.168.1.9:5000/api/save-token'),
-    headers: {'Content-Type': 'application/json'},
-    body: json.encode({
-      'userId': user['_id'],
-      'deviceToken': token,
-    }),
-  );
-}
-  
   Future<void> _signIn() async {
     setState(() => _isLoading = true);
     try {
       final response = await http.post(
-        Uri.parse("http://192.168.1.9:5000/api/signin"),
+        Uri.parse("http://192.168.1.5:5000/api/signin"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": _emailController.text.trim(),
@@ -75,7 +72,6 @@ class _SignInScreenState extends State<SignInScreen> {
             backgroundColor: Colors.green,
           ),
         );
-
 
         if (role == 'doctor') {
           // Check if doctor has completed first-time setup

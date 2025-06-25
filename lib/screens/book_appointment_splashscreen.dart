@@ -9,70 +9,103 @@ class BookAppointmentSplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE6F0FF), // Light blue background
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const SizedBox(height: 80),
-          // Bigger image
-          Center(
-            child: Image.asset(
-              'assets/images/splash_screen.png', // Make sure this exists
-              height: 600,
-              fit: BoxFit.contain,
+      backgroundColor: const Color.fromARGB(255, 111, 247, 195),
+      body: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 40),
+            // Splash image
+            Center(
+              child: Image.asset(
+                'assets/images/splash_screen.png',
+                height: 550,
+                fit: BoxFit.contain,
+              ),
             ),
-          ),
-          const SizedBox(height: 40),
-          const Text(
-            'Book an appointment',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF007BFF),
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 30),
-            child: Text(
-              'Easy, Quick and safest way to book your appointments. Find your specialist doctor today.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.black87),
-            ),
-          ),
-          const Spacer(),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 30),
-            child: SizedBox(
-              width: 200,
-              height: 48,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF007BFF),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => BookAppointmentScreen(user: user),
+
+            // Rounded card immediately after image (no gap)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                30,
+                0,
+                30,
+                20,
+              ), // no top padding
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(
+                  24,
+                  10,
+                  24,
+                  30,
+                ), // less top padding inside
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 12,
+                      offset: Offset(0, 6),
                     ),
-                  );
-                },
-                child: const Text(
-                  'Next',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Book an appointment',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF00796B),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Easy, Quick and safest way to book your appointments. Find your specialist doctor today.',
+                      style: TextStyle(fontSize: 15, color: Colors.black54),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: 200,
+                      height: 48,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.teal,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          elevation: 6,
+                          shadowColor: Colors.black26,
+                        ),
+                        onPressed: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  BookAppointmentScreen(user: user),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Get Started',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

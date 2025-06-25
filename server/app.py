@@ -47,7 +47,7 @@ def signup():
         data = request.get_json()
         if not data:
             return jsonify({'success': False, 'message': 'No data received'}), 400
-        
+
         required_fields = ['name', 'dob', 'email', 'gender', 'password', 'confirmPassword', 'role']
         missing_fields = [field for field in required_fields if field not in data or not data[field]]
         if missing_fields:
@@ -55,44 +55,44 @@ def signup():
                 'success': False,
                 'message': f'Missing required fields: {", ".join(missing_fields)}'
             }), 400
-        
+
         if not EMAIL_REGEX.match(data['email']):
             return jsonify({
                 'success': False,
-                'message': 'Invalid email format. Please use a valid email address'
+                'message': 'Invalid email format. Please use a valid email address.'
             }), 400
-        
+
         if len(data['password']) < PASSWORD_MIN_LENGTH:
             return jsonify({
                 'success': False,
-                'message': f'Password must be at least {PASSWORD_MIN_LENGTH} characters'
+                'message': f'Password must be at least {PASSWORD_MIN_LENGTH} characters.'
             }), 400
-        
+
         if data['password'] != data['confirmPassword']:
             return jsonify({
                 'success': False,
-                'message': 'Passwords do not match'
+                'message': 'Passwords do not match.'
             }), 400
-        
-        if mongo.db.users.find_one({'email': data['email']}):
+
+        if mongo.db.users.find_one({'email': data['email'].lower().strip()}):
             return jsonify({
                 'success': False,
-                'message': 'Email already registered. Please use a different email or login'
+                'message': 'Email already registered. Please use a different email or login.'
             }), 400
-        
+
         try:
             dob = datetime.strptime(data['dob'], '%Y-%m-%d')
             if dob > datetime.now():
                 return jsonify({
                     'success': False,
-                    'message': 'Date of birth cannot be in the future'
+                    'message': 'Date of birth cannot be in the future.'
                 }), 400
         except ValueError:
             return jsonify({
                 'success': False,
-                'message': 'Invalid date format. Please use YYYY-MM-DD'
+                'message': 'Invalid date format. Please use YYYY-MM-DD.'
             }), 400
-        
+
         hashed_password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt())
         
         user = {
@@ -115,17 +115,19 @@ def signup():
         result = mongo.db.users.insert_one(user)
         user['_id'] = str(result.inserted_id)
         del user['password']
-        
+
         return jsonify({
             'success': True,
             'message': 'Registration successful!',
             'user': user
         }), 201
-        
+
     except Exception as e:
+        import traceback
+        traceback.print_exc()  # <-- this prints the full error in your terminal
         return jsonify({
             'success': False,
-            'message': 'An unexpected error occurred. Please try again later.'
+            'message': f'Internal Server Error: {str(e)}'
         }), 500
 @app.route('/api/check_email', methods=['POST'])
 def check_email():
@@ -1135,4 +1137,4 @@ if __name__ == '__main__':
         print("[INFO] Starting scheduler...")
 
     print("[INFO] Starting Flask app...")
-    app.run(host='192.168.1.9', port=5000, debug=True)
+    app.run(host='192.168.1.5', port=5000, debug=True)

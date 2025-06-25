@@ -85,7 +85,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
 
     try {
       final uri = Uri.parse(
-        'http://192.168.1.9:5000/api/doctors?specialization=${Uri.encodeComponent(_selectedSpecialization!)}',
+        'http://192.168.1.5:5000/api/doctors?specialization=${Uri.encodeComponent(_selectedSpecialization!)}',
       );
       final response = await http.get(uri);
 
@@ -279,7 +279,10 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(doctor['specialization'] ?? ''),
-                            Text('Fee: ₹${doctor['fees']}', style: TextStyle(fontSize: 12)),
+                            Text(
+                              'Fee: ₹${doctor['fees']}',
+                              style: TextStyle(fontSize: 12),
+                            ),
                           ],
                         ),
                         trailing: const Icon(Icons.chevron_right),
