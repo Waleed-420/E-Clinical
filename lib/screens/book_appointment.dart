@@ -279,7 +279,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(doctor['specialization'] ?? ''),
-                            Text('Fee: ₹${doctor['fee'] ?? 'N/A'}', style: TextStyle(fontSize: 12)),
+                            Text('Fee: ₹${doctor['fees']}', style: TextStyle(fontSize: 12)),
                           ],
                         ),
                         trailing: const Icon(Icons.chevron_right),

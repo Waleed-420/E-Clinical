@@ -110,6 +110,7 @@ def signup():
         if data['role'].lower() == 'doctor':
             user['fees'] = 500
             user['balance'] = 0
+            user['ratings'] = []
         
         result = mongo.db.users.insert_one(user)
         user['_id'] = str(result.inserted_id)
@@ -398,8 +399,9 @@ def get_doctors():
     users = list(mongo.db.users.find(query, {
         '_id': 1,
         'name': 1,
+        'fees': 1,
         'specialization': 1,
-        'schedule': 1
+        'schedule': 1,
     }))
     
     for doc in users:
@@ -422,7 +424,7 @@ def get_available_slots(doctor_id):
         if not ObjectId.is_valid(doctor_id):
             return jsonify({'success': False, 'message': 'Invalid doctor ID format'}), 400
 
-        doctor = mongo.db.doctors.find_one({'_id': ObjectId(doctor_id)})
+        doctor = mongo.db.doctors.find_one({'_id': doctor_id})
         if not doctor:
             return jsonify({'success': False, 'message': 'Doctor not found'}), 404
 
@@ -541,7 +543,7 @@ def book_appointment():
             'time': data['time'],
             'payment': data.get('payment'),  # Optional
             'status': 'booked',
-            'fee': doctor.get('fee'),
+            'fees': doctor.get('fees'),
             'channel': channel,
             'created_at': datetime.now(pkt),
             'updated_at': datetime.now(pkt),
@@ -554,7 +556,7 @@ def book_appointment():
         # update doctor balance
         mongo.db.users.update_one(
             {'_id': ObjectId(data['doctorId'])},
-            {'$inc': {'balance': doctor.get('fee')}}
+            {'$inc': {'balance': doctor.get('fees')}}
         )
 
         return jsonify({
@@ -991,6 +993,7 @@ def rate_appointment(appointment_id):
     # Push rating to doctor's rating list
     mongo.db.doctors.update_one(
         {'_id': ObjectId(doctor_id)},
+        # make ratings if not made
         {'$push': {'ratings': rating}}
     )
 
