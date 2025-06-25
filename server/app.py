@@ -1076,38 +1076,54 @@ def end_call():
 @app.route('/api/appointments/<appt_id>/prescription', methods=['POST'])
 def save_prescription(appt_id):
     data = request.json
-    # Find appointment
     appt = mongo.db.appointments.find_one({"_id": ObjectId(appt_id)})
     if not appt:
         return jsonify({"success": False, "message": "Appointment not found"}), 404
 
-    user_id = appt['userId']  # assuming this field exists
+    user_id = appt['userId']
 
-    # Decide what to save
-    prescription = None
     if data.get('noMedication'):
-        prescription = {'noMedication': True}
-    elif data.get('prescription'):
-        prescription = {'items': data['prescription']}
-    else:
+        # Optional: handle "no medication" as needed
+        mongo.db.appointments.update_one(
+            {"_id": ObjectId(appt_id)},
+            {"$set": {"prescription": []}}
+        )
+        return jsonify({"success": True}), 200
+
+    items = data.get('prescription')
+    if not items:
         return jsonify({"success": False, "message": "No prescription data"}), 400
 
-    # Save in appointment
+    # Map keys for each item as required
+    formatted = [
+        {
+            "name": x["medicine"],
+            "perdayDosage": x["dosagePerDay"],
+            "totaldays": x["days"]
+        } for x in items
+    ]
+
     mongo.db.appointments.update_one(
         {"_id": ObjectId(appt_id)},
-        {"$set": {"prescription": prescription}}
+        {"$set": {"prescription": formatted}}
     )
 
-    # Save in user
+    # Optionally, push to user's prescriptions (if you want a user-level history)
     mongo.db.users.update_one(
         {"_id": ObjectId(user_id)},
-        {"$push": prescription}
+        {"$push": {"prescriptions": {"apptId": appt_id, "items": formatted}}}
     )
 
     return jsonify({"success": True})
 
+@app.route('/api/users/<user_id>/prescriptions', methods=['GET'])
+def get_user_prescriptions(user_id):
+    user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        return jsonify({"success": False, "message": "User not found"}), 404
 
-
+    prescriptions = user.get('prescriptions', [])
+    return jsonify({"success": True, "prescriptions": prescriptions})
 
 
 
