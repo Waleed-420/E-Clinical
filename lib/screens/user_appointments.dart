@@ -39,7 +39,7 @@ class _UserAppointmentsState extends State<UserAppointments> {
     try {
       final response = await http.get(
         Uri.parse(
-          'http://192.168.10.10:5000/api/user/${widget.user['_id']}/appointments',
+          'http://192.168.10.16:5000/api/user/${widget.user['_id']}/appointments',
         ),
       );
 
@@ -83,16 +83,13 @@ class _UserAppointmentsState extends State<UserAppointments> {
 
   Future<void> initiateVideoCall(Map<String, dynamic> appointment) async {
     final res = await http.post(
-      Uri.parse('http://192.168.10.10:5000/api/start-call'),
+      Uri.parse('http://192.168.10.16:5000/api/start-call'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'channelName': appointment['_id'],
-      }),
+      body: jsonEncode({'channelName': appointment['_id']}),
     );
     final data = jsonDecode(res.body);
     if (!mounted) return;
     if (data['success'] == true) {
-
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -336,7 +333,8 @@ class _UserAppointmentsState extends State<UserAppointments> {
                       try {
                         final response = await http.post(
                           Uri.parse(
-                              'http://192.168.10.10:5000/api/appointments/$appointmentId/rate'),
+                            'http://192.168.10.16:5000/api/appointments/$appointmentId/rate',
+                          ),
                           headers: {'Content-Type': 'application/json'},
                           body: jsonEncode({'rating': rating}),
                         );
@@ -344,7 +342,8 @@ class _UserAppointmentsState extends State<UserAppointments> {
                         final data = jsonDecode(response.body);
                         if (!mounted) return;
 
-                        if (response.statusCode == 200 && data['success'] == true) {
+                        if (response.statusCode == 200 &&
+                            data['success'] == true) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
@@ -356,14 +355,16 @@ class _UserAppointmentsState extends State<UserAppointments> {
                           fetchAppointments(); // Refresh list to show new rating
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(data['message'] ?? 'Rating failed')),
+                            SnackBar(
+                              content: Text(data['message'] ?? 'Rating failed'),
+                            ),
                           );
                         }
                       } catch (e) {
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error: $e')),
-                          );
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text('Error: $e')));
                         }
                       }
                     },
@@ -558,7 +559,11 @@ class _UserAppointmentsState extends State<UserAppointments> {
                             const SizedBox(height: 8),
                             Row(
                               children: [
-                                const Icon(Icons.star, size: 18, color: Colors.amber),
+                                const Icon(
+                                  Icons.star,
+                                  size: 18,
+                                  color: Colors.amber,
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
                                   'Rated: ${(appt['rating'] as num).toDouble().toStringAsFixed(1)} stars',

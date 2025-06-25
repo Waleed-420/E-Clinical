@@ -47,7 +47,7 @@ def signup():
         data = request.get_json()
         if not data:
             return jsonify({'success': False, 'message': 'No data received'}), 400
-        
+
         required_fields = ['name', 'dob', 'email', 'gender', 'password', 'confirmPassword', 'role']
         missing_fields = [field for field in required_fields if field not in data or not data[field]]
         if missing_fields:
@@ -55,45 +55,46 @@ def signup():
                 'success': False,
                 'message': f'Missing required fields: {", ".join(missing_fields)}'
             }), 400
-        
+
         if not EMAIL_REGEX.match(data['email']):
             return jsonify({
                 'success': False,
-                'message': 'Invalid email format. Please use a valid email address'
+                'message': 'Invalid email format. Please use a valid email address.'
             }), 400
-        
+
         if len(data['password']) < PASSWORD_MIN_LENGTH:
             return jsonify({
                 'success': False,
-                'message': f'Password must be at least {PASSWORD_MIN_LENGTH} characters'
+                'message': f'Password must be at least {PASSWORD_MIN_LENGTH} characters.'
             }), 400
-        
+
         if data['password'] != data['confirmPassword']:
             return jsonify({
                 'success': False,
-                'message': 'Passwords do not match'
+                'message': 'Passwords do not match.'
             }), 400
-        
-        if mongo.db.users.find_one({'email': data['email']}):
+
+        if mongo.db.users.find_one({'email': data['email'].lower().strip()}):
             return jsonify({
                 'success': False,
-                'message': 'Email already registered. Please use a different email or login'
+                'message': 'Email already registered. Please use a different email or login.'
             }), 400
-        
+
         try:
-            dob = datetime.strptime(data['dob'], '%Y-%m-%d')
+            dob = pkt.localize(datetime.strptime(data['dob'], '%Y-%m-%d'))
             if dob > datetime.now(pkt):
                 return jsonify({
                     'success': False,
-                    'message': 'Date of birth cannot be in the future'
+                    'message': 'Date of birth cannot be in the future.'
                 }), 400
         except ValueError:
             return jsonify({
                 'success': False,
-                'message': 'Invalid date format. Please use YYYY-MM-DD'
+                'message': 'Invalid date format. Please use YYYY-MM-DD.'
             }), 400
-        
+
         hashed_password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt())
+
         user = {
             'name': data['name'].strip(),
             'dob': dob,
@@ -107,24 +108,27 @@ def signup():
             'verified': False
         }
 
-        if(role ==  'Doctor'):
+        if data['role'].strip().lower() == 'doctor':
             user['fee'] = 500
-        
+
         result = mongo.db.users.insert_one(user)
         user['_id'] = str(result.inserted_id)
         del user['password']
-        
+
         return jsonify({
             'success': True,
             'message': 'Registration successful!',
             'user': user
         }), 201
-        
+
     except Exception as e:
+        import traceback
+        traceback.print_exc()  # <-- this prints the full error in your terminal
         return jsonify({
             'success': False,
-            'message': 'An unexpected error occurred. Please try again later.'
+            'message': f'Internal Server Error: {str(e)}'
         }), 500
+
 
 @app.route('/api/check_email', methods=['POST'])
 def check_email():
@@ -1035,9 +1039,73 @@ def change_fee(doctor_id):
 
 
 
+#lab apis
+@app.route('/api/lab/tests', methods=['POST'])
+def add_lab_test():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'No data provided'}), 400
+
+        # Validate fields
+        lab_user_id = data.get('labUserId')
+        test_name = data.get('testName')
+        sample_type = data.get('sampleType')
+        price = data.get('price')
+
+        if not lab_user_id or not ObjectId.is_valid(lab_user_id):
+            return jsonify({'success': False, 'message': 'Invalid or missing lab user ID'}), 400
+
+        if not test_name:
+            return jsonify({'success': False, 'message': 'Test name is required'}), 400
+
+        if not sample_type:
+            return jsonify({'success': False, 'message': 'Sample type is required'}), 400
+
+        try:
+            price = float(price)
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'message': 'Price must be a valid number'}), 400
+
+        # Save test
+        test = {
+            'labUserId': lab_user_id,
+            'testName': test_name,
+            'sampleType': sample_type,
+            'price': price,
+            'createdAt': datetime.now(pkt)
+        }
+
+        result = mongo.db.tests.insert_one(test)
+
+        return jsonify({
+            'success': True,
+            'message': 'Test added successfully',
+            'testId': str(result.inserted_id)
+        }), 201
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Server error: {str(e)}'}), 500
 
 
+@app.route('/api/lab/tests/<lab_user_id>', methods=['GET'])
+def get_lab_tests(lab_user_id):
+    try:
+        if not ObjectId.is_valid(lab_user_id):
+            return jsonify({'success': False, 'message': 'Invalid lab user ID'}), 400
 
+        tests = list(mongo.db.tests.find({'labUserId': lab_user_id}))
+        for test in tests:
+            test['_id'] = str(test['_id'])  # Convert ObjectId to string
+
+        return jsonify({'success': True, 'tests': tests}), 200
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Server error: {str(e)}'}), 500
 
 
 
@@ -1047,4 +1115,4 @@ if __name__ == '__main__':
         print("[INFO] Starting scheduler...")
 
     print("[INFO] Starting Flask app...")
-    app.run(host='192.168.10.10', port=5000, debug=True)
+    app.run(host='192.168.10.16', port=5000, debug=True)

@@ -6,7 +6,6 @@ import 'package:time_range/time_range.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'doctor_dashboard.dart';
-import 'doctor_dashboard.dart';
 
 class DoctorScheduleSetup extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -103,7 +102,7 @@ class _DoctorScheduleSetupState extends State<DoctorScheduleSetup> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.10.10:5000/api/doctor/schedule'),
+        Uri.parse('http://192.168.10.16:5000/api/doctor/schedule'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'doctorId': widget.user['_id'].toString(),
@@ -165,7 +164,7 @@ class _DoctorScheduleSetupState extends State<DoctorScheduleSetup> {
   Future<void> fetchDoctorSchedule() async {
     final doctorId = widget.user['_id'];
     final url = Uri.parse(
-      'http://192.168.10.10:5000/api/doctor/$doctorId/schedule',
+      'http://192.168.10.16:5000/api/doctor/$doctorId/schedule',
     );
 
     try {
