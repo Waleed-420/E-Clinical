@@ -50,7 +50,9 @@ class _ScanPhotoPageState extends State<ScanPhotoPage> {
     });
 
     try {
-      final uri = Uri.parse('http://192.168.1.5:5000/api/scan-medical-report');
+      final uri = Uri.parse(
+        'http://192.168.10.19:5000/api/scan-medical-report',
+      );
       final request = http.MultipartRequest('POST', uri);
 
       if (kIsWeb) {

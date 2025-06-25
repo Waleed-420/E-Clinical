@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:animated_custom_dropdown/custom_dropdown.dart';
 import 'doctor_detail.dart';
 
 class BookAppointmentScreen extends StatefulWidget {
@@ -34,36 +35,21 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
     'Psychiatrist',
     'Radiologist',
     'Surgeon',
+    'Gynaecologist',
   ];
 
   final List<Map<String, dynamic>> popularSpecializations = [
-    {
-      'title': 'Cardiologist',
-      'icon': Icons.favorite,
-      'color': Colors.blueAccent,
-    },
-    {
-      'title': 'Dentist',
-      'icon': Icons.medical_services_outlined,
-      'color': Colors.orangeAccent,
-    },
-    {
-      'title': 'Neurologist',
-      'icon': Icons.brightness_5, // Brain alternative icon
-      'color': Colors.green,
-    },
-    {
-      'title': 'Pediatrician',
-      'icon': Icons.child_care,
-      'color': Colors.pinkAccent,
-    },
+    {'title': 'Cardiologist', 'image': 'assets/images/Heart.png'},
+    {'title': 'Dentist', 'image': 'assets/images/Tooth.png'},
+    {'title': 'Neurologist', 'image': 'assets/images/Brain.png'},
+    {'title': 'Gynaecologist', 'image': 'assets/images/Gynae.png'},
   ];
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(seconds: 20),
+      duration: const Duration(seconds: 200),
       vsync: this,
     )..repeat();
   }
@@ -85,7 +71,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
 
     try {
       final uri = Uri.parse(
-        'http://192.168.1.5:5000/api/doctors?specialization=${Uri.encodeComponent(_selectedSpecialization!)}',
+        'http://192.168.10.19:5000/api/doctors?specialization=${Uri.encodeComponent(_selectedSpecialization!)}',
       );
       final response = await http.get(uri);
 
@@ -169,20 +155,29 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                               width: 120,
                               margin: const EdgeInsets.only(right: 16),
                               decoration: BoxDecoration(
-                                color: item['color'] as Color,
+                                color: const Color(0xFF15A196),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(
-                                    item['icon'] as IconData,
-                                    size: 40,
-                                    color: Colors.white,
-                                  ),
+                                  if (item.containsKey('image'))
+                                    SizedBox(
+                                      height: 60,
+                                      child: FittedBox(
+                                        fit: BoxFit.contain,
+                                        child: Image.asset(item['image']),
+                                      ),
+                                    )
+                                  else if (item.containsKey('icon'))
+                                    const Icon(
+                                      Icons.child_care,
+                                      size: 40,
+                                      color: Colors.white,
+                                    ),
                                   const SizedBox(height: 10),
                                   Text(
-                                    item['title'] as String,
+                                    item['title'],
                                     textAlign: TextAlign.center,
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
@@ -217,33 +212,24 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
               ),
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: _specializations.contains(_selectedSpecialization)
+            CustomDropdown<String>(
+              hintText: 'Select Specialization',
+              items: _specializations,
+              initialItem: _specializations.contains(_selectedSpecialization)
                   ? _selectedSpecialization
                   : null,
-              decoration: InputDecoration(
-                labelText: 'Specialization',
-                filled: true,
-                fillColor: Colors.grey[100],
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              items: _specializations
-                  .map(
-                    (spec) => DropdownMenuItem(value: spec, child: Text(spec)),
-                  )
-                  .toList(),
               onChanged: (value) {
                 setState(() {
                   _selectedSpecialization = value;
                 });
                 _fetchDoctors();
               },
+              decoration: CustomDropdownDecoration(
+                closedFillColor: Colors.grey[100],
+                closedBorder: Border.all(color: Colors.grey.shade400, width: 1),
+                closedBorderRadius: BorderRadius.circular(12),
+                hintStyle: const TextStyle(color: Colors.grey),
+              ),
             ),
             const SizedBox(height: 24),
             if (_isLoading)
@@ -281,7 +267,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                             Text(doctor['specialization'] ?? ''),
                             Text(
                               'Fee: ₹${doctor['fees']}',
-                              style: TextStyle(fontSize: 12),
+                              style: const TextStyle(fontSize: 12),
                             ),
                           ],
                         ),

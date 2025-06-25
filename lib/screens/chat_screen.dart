@@ -49,7 +49,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _loadChat() async {
-    final url = 'http://192.168.1.5:5000/api/chat/channel/${widget.channel}';
+    final url = 'http://192.168.10.19:5000/api/chat/channel/${widget.channel}';
     final response = await http.get(Uri.parse(url));
 
     if (response.statusCode == 200) {
@@ -68,7 +68,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _createNewChat() async {
-    final url = 'http://192.168.1.5:5000/api/chat/channel/${widget.channel}';
+    final url = 'http://192.168.10.19:5000/api/chat/channel/${widget.channel}';
     final response = await http.post(Uri.parse(url));
     if (response.statusCode == 200) {
       _loadChat();
@@ -81,7 +81,7 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _isSending = true);
 
     final response = await http.post(
-      Uri.parse('http://192.168.1.5:5000/api/chat/$_chatId/messages'),
+      Uri.parse('http://192.168.10.19:5000/api/chat/$_chatId/messages'),
       headers: {'Content-Type': 'application/json'},
       body: json.encode({
         'sender': widget.currentUser['_id'],
