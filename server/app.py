@@ -23,7 +23,7 @@ import traceback
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
-cred = credentials.Certificate("./serviceAccountKey.json")
+cred = credentials.Certificate("service.json")
 firebase_admin.initialize_app(cred)
 
 AGORA_APP_ID = 'dff72470ec104f92aa6cc17e36337822'
@@ -1073,7 +1073,38 @@ def end_call():
             ))
     return jsonify(success=True), 200
 
+@app.route('/api/appointments/<appt_id>/prescription', methods=['POST'])
+def save_prescription(appt_id):
+    data = request.json
+    # Find appointment
+    appt = mongo.db.appointments.find_one({"_id": ObjectId(appt_id)})
+    if not appt:
+        return jsonify({"success": False, "message": "Appointment not found"}), 404
 
+    user_id = appt['userId']  # assuming this field exists
+
+    # Decide what to save
+    prescription = None
+    if data.get('noMedication'):
+        prescription = {'noMedication': True}
+    elif data.get('prescription'):
+        prescription = {'items': data['prescription']}
+    else:
+        return jsonify({"success": False, "message": "No prescription data"}), 400
+
+    # Save in appointment
+    mongo.db.appointments.update_one(
+        {"_id": ObjectId(appt_id)},
+        {"$set": {"prescription": prescription}}
+    )
+
+    # Save in user
+    mongo.db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$push": prescription}
+    )
+
+    return jsonify({"success": True})
 
 
 
