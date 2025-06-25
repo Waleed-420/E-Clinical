@@ -1050,6 +1050,25 @@ def reject_call():
 
     return jsonify({'success': True}), 200
 
+@app.route('/api/end-call', methods=['POST'])
+def end_call():
+    channel = request.json.get('channelName')
+    appt = mongo.db.appointments.find_one({'_id': ObjectId(channel)})
+    if not appt: return jsonify(success=False), 404
+    # find both user & doctor tokens
+    user = mongo.db.users.find_one({'_id': ObjectId(appt['userId'])})
+    doc  = mongo.db.users.find_one({'_id': ObjectId(appt['doctorId'])})
+    for recipient in (user, doc):
+        if recipient and recipient.get('deviceToken'):
+            messaging.send(messaging.Message(
+                notification=messaging.Notification(
+                  title='CallEnded', 
+                  body='The other party has ended the call.'
+                ),
+                data={'channelName': channel},
+                token=recipient['deviceToken'],
+            ))
+    return jsonify(success=True), 200
 
 
 
