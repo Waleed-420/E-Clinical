@@ -39,10 +39,12 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     await [Permission.microphone, Permission.camera].request();
 
     _engine = createAgoraRtcEngine();
-    await _engine.initialize(const RtcEngineContext(
-      appId: appId,
-      channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
-    ));
+    await _engine.initialize(
+      const RtcEngineContext(
+        appId: appId,
+        channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
+      ),
+    );
 
     _engine.registerEventHandler(
       RtcEngineEventHandler(
@@ -56,14 +58,19 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
             _remoteUid = remoteUid;
           });
         },
-        onUserOffline: (RtcConnection connection, int remoteUid, UserOfflineReasonType reason) {
-          setState(() {
-            _remoteUid = null;
-          });
-        },
+        onUserOffline:
+            (
+              RtcConnection connection,
+              int remoteUid,
+              UserOfflineReasonType reason,
+            ) {
+              setState(() {
+                _remoteUid = null;
+              });
+            },
         onTokenPrivilegeWillExpire: (_, __) async {
           final res = await http.post(
-            Uri.parse('http://192.168.1.9:5000/api/refresh-token'),
+            Uri.parse('http://10.8.149.233:5000/api/refresh-token'),
             body: jsonEncode({'channelName': widget.channel}),
           );
           final newToken = jsonDecode(res.body)['token'];
@@ -71,7 +78,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         },
       ),
     );
-
 
     await _engine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
     await _engine.enableVideo();
@@ -173,7 +179,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
               _engine.release();
               Navigator.pop(context);
               final res = http.post(
-                Uri.parse('http://192.168.1.9:5000/api/end-call'),
+                Uri.parse('http://10.8.149.233:5000/api/end-call'),
                 headers: {'Content-Type': 'application/json'},
                 body: jsonEncode({'channelName': widget.channel}),
               );
@@ -189,14 +195,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   Widget build(BuildContext context) {
     // ignore: deprecated_member_use
     return WillPopScope(
-    onWillPop: () async {
-      // return false to disable popping
-      return false;
-    },
-    child: Scaffold(
-      backgroundColor: Colors.black,
-      body: _buildVideoLayout(),
-    ),
-  );
+      onWillPop: () async {
+        // return false to disable popping
+        return false;
+      },
+      child: Scaffold(backgroundColor: Colors.black, body: _buildVideoLayout()),
+    );
   }
 }

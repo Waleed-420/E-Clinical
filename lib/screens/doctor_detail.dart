@@ -44,7 +44,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
       final date = DateFormat('yyyy-MM-dd').format(_selectedDay);
       final doctorId = widget.doctor['_id'];
       final uri = Uri.parse(
-        'http://192.168.1.9:5000/api/doctor/$doctorId/slots?date=$date',
+        'http://10.8.149.233:5000/api/doctor/$doctorId/slots?date=$date',
       );
 
       final response = await http.get(uri);
@@ -88,7 +88,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.9:5000/api/appointments'),
+        Uri.parse('http://10.8.149.233:5000/api/appointments'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'userId': widget.user['_id'],

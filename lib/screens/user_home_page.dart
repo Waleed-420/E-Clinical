@@ -4,11 +4,11 @@ import 'scan_photo_page.dart';
 import 'user_prescription_screen.dart';
 import 'package:flutter/material.dart';
 import 'book_appointment.dart';
+import 'book_appointment_splashscreen.dart';
 import 'user_reports.dart';
 import 'user_appointments.dart';
 import 'user_settings.dart';
 import 'upload_pdf_screen.dart';
-import 'book_test_screen.dart';
 import 'past_reports_screen.dart';
 
 class UserHomePage extends StatelessWidget {
