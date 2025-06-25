@@ -96,6 +96,8 @@ class _UserAppointmentsState extends State<UserAppointments> {
       body: jsonEncode({'channelName': appointment['_id']}),
     );
     final data = jsonDecode(res.body);
+    // console dta value
+    print(data);
     if (!mounted) return;
     if (data['success'] == true) {
       Navigator.push(
