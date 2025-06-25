@@ -124,7 +124,7 @@ class _StartNewTestPageState extends State<StartNewTestPage> {
       'price': double.parse(_priceController.text.trim()),
     };
 
-    final url = Uri.parse('http://192.168.10.16:5000/api/lab/tests');
+    final url = Uri.parse('http://192.168.18.130:5000/api/lab/tests');
 
     try {
       final response = await http.post(
