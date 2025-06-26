@@ -25,6 +25,7 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 cred = credentials.Certificate("serviceKey.json")
+cred = credentials.Certificate("serviceKey.json")
 firebase_admin.initialize_app(cred)
 
 AGORA_APP_ID = '93fa8e9ec1464959abd941f1f35b5470'
@@ -863,7 +864,7 @@ except SchedulerAlreadyRunningError:
 def start_call():
     data = request.json
     channel_name = data['channelName']
-    uid = random.randint(1, 999999) 
+    uid = 0
     expire_time = int(time.time()) + 180000
 
     token = RtcTokenBuilder.buildTokenWithUid(
@@ -872,6 +873,9 @@ def start_call():
     )
 
     print(token)
+
+    print(token)
+
 
     appointment = mongo.db.appointments.find_one({'_id': ObjectId(channel_name)})
     if not appointment:
