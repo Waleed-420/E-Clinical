@@ -22,7 +22,7 @@ class _UserPrescriptionScreenState extends State<UserPrescriptionScreen> {
 
   Future<void> fetchPrescriptions() async {
     final url = Uri.parse(
-      'http://192.168.10.19:5000/api/users/${widget.userId}/prescriptions',
+      'http://192.168.1.6:5000/api/users/${widget.userId}/prescriptions',
     );
     final res = await http.get(url);
     if (res.statusCode == 200) {
