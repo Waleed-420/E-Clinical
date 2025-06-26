@@ -1140,6 +1140,92 @@ def get_user_prescriptions(user_id):
     prescriptions = user.get('prescriptions', [])
     return jsonify({"success": True, "prescriptions": prescriptions})
 
+#test
+
+
+tests_collection = mongo.db.tests
+@app.route('/api/lab/tests', methods=['POST'])
+def create_lab_test():
+    try:
+        data = request.get_json()
+        required_fields = ['labUserId', 'testName', 'sampleType', 'price']
+        missing_fields = [f for f in required_fields if f not in data or not data[f]]
+
+        if missing_fields:
+            return jsonify({'success': False, 'message': f'Missing fields: {missing_fields}'}), 400
+
+        new_test = {
+            'labUserId': data['labUserId'], 
+            'testName': data['testName'],
+            'sampleType': data['sampleType'],
+            'price': float(data['price']),
+            'description': data.get('description', ''),
+            'createdAt': datetime.utcnow(),
+            
+
+        }
+
+        result = tests_collection.insert_one(new_test)
+        return jsonify({'success': True, 'message': 'Test created', 'testId': str(result.inserted_id)}), 201
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/lab/tests/<labUserId>', methods=['GET'])
+def get_tests_by_lab(labUserId):
+    try:
+        # If your labUserId in MongoDB is stored as a string, skip ObjectId conversion.
+        tests = list(tests_collection.find({'labUserId': labUserId}))
+
+        # Convert ObjectId fields to string for JSON compatibility
+        for test in tests:
+            test['_id'] = str(test['_id'])
+
+        return jsonify({'success': True, 'tests': tests}), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+
+@app.route('/api/lab/tests', methods=['GET'])
+def get_all_tests():
+    try:
+        tests = list(mongo.db.tests.find())
+        for test in tests:
+            test['_id'] = str(test['_id'])
+        return jsonify({'success': True, 'tests': tests}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/book-test', methods=['POST'])
+def book_test():
+    try:
+        data = request.get_json()
+        required = ['userId', 'labUserId', 'testId', 'location']
+        missing = [f for f in required if f not in data or not data[f]]
+        if missing:
+            return jsonify({'success': False, 'message': f'Missing: {missing}'}), 400
+
+        loc = data['location']
+        booking = {
+            'userId': data['userId'],
+            'labUserId': data['labUserId'],
+            'testId': data['testId'],
+            'location': {
+                'lat': loc['lat'],
+                'lng': loc['lng'],
+                'address': loc.get('address', '')
+            },
+            'status': 'pending',
+            'bookedAt': datetime.utcnow()
+        }
+
+        mongo.db.test_bookings.insert_one(booking)
+        return jsonify({'success': True, 'message': 'Test booked'}), 201
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
 
@@ -1148,4 +1234,4 @@ if __name__ == '__main__':
         print("[INFO] Starting scheduler...")
 
     print("[INFO] Starting Flask app...")
-    app.run(host='192.168.10.19', port=5000, debug=True)
+    app.run(host='192.168.1.6', port=5000, debug=True)
