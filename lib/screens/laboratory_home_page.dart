@@ -28,7 +28,7 @@ class _LaboratoryHomePageState extends State<LaboratoryHomePage> {
 
   void fetchTests() async {
     final uri = Uri.parse(
-      'http://192.168.1.6:5000/api/lab/tests/${widget.user['_id']}',
+      'http://192.168.1.3:5000/api/lab/tests/${widget.user['_id']}',
     );
     try {
       final res = await http.get(uri);

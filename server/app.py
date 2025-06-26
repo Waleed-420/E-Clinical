@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+import random
 from flask_pymongo import PyMongo
 from bson.objectid import ObjectId
 from datetime import datetime, timedelta
@@ -862,7 +863,7 @@ except SchedulerAlreadyRunningError:
 def start_call():
     data = request.json
     channel_name = data['channelName']
-    uid = 0
+    uid = random.randint(1, 999999) 
     expire_time = int(time.time()) + 180000
 
     token = RtcTokenBuilder.buildTokenWithUid(
@@ -1273,6 +1274,36 @@ def get_lab_bookings(lab_id):
         print(f"❌ Error fetching lab bookings: {e}")
         return jsonify({'success': False, 'message': 'Server error'}), 500
 
+@app.route('/api/user/booked-tests/<user_id>', methods=['GET'])
+def get_user_booked_tests(user_id):
+    try:
+        # Find all bookings made by this user
+        bookings = list(mongo.db.bookings.find({'userId': user_id}))
+
+        enriched_tests = []
+        for booking in bookings:
+            # Fetch lab details
+            lab = mongo.db.lab_users.find_one({'_id': ObjectId(booking['labUserId'])})
+            # Fetch test details
+            test = mongo.db.lab_tests.find_one({'_id': ObjectId(booking['testId'])})
+
+            enriched_tests.append({
+                '_id': str(booking['_id']),
+                'labUserId': str(booking['labUserId']),
+                'testId': str(booking['testId']),
+                'labName': lab['name'] if lab else 'Unknown Lab',
+                'testName': test['testName'] if test else 'Unknown Test',
+                'price': test['price'] if test else 'N/A',
+                'location': f"{booking['location']['lat']}, {booking['location']['lng']}"
+            })
+
+        return jsonify({'success': True, 'tests': enriched_tests}), 200
+
+    except Exception as e:
+        print(f"❌ Error fetching user booked tests: {e}")
+        return jsonify({'success': False, 'message': 'Server error'}), 500
+
+
 @app.route('/api/lab/chat/start', methods=['POST'])
 def start_lab_chat():
     data = request.json
@@ -1297,38 +1328,57 @@ def start_lab_chat():
 
     return jsonify({'success': True, 'channel': channel}), 200
 
-@app.route('/api/lab/start-audio-call', methods=['POST'])
+@app.route('/api/start-audio-call', methods=['POST'])
 def start_audio_call():
     data = request.get_json()
-    channel_name = data['channelName']
-    uid = 0
+
+    channel_name = data.get('channelName')
+    user_id = data.get('userId')      # normal user
+    lab_user_id = data.get('labUserId')  # lab
+
+    if not channel_name or not user_id or not lab_user_id:
+        return jsonify({'success': False, 'message': 'Missing fields'}), 400
+
+    uid = random.randint(1, 999999)
     expire_time = int(time.time()) + 180000
 
     token = RtcTokenBuilder.buildTokenWithUid(
-        AGORA_APP_ID, AGORA_APP_CERTIFICATE,
-        channel_name, uid, 1, expire_time
+        AGORA_APP_ID,
+        AGORA_APP_CERTIFICATE,
+        channel_name,
+        uid,
+        1,
+        expire_time
     )
 
-    user = mongo.db.users.find_one({'_id': ObjectId(data['userId'])})
-    if not user:
-        return jsonify({'success': False, 'message': 'User not found'}), 404
+    # Detect who is the caller and receiver
+    caller = mongo.db.users.find_one({'_id': ObjectId(user_id)})
+    receiver = mongo.db.users.find_one({'_id': ObjectId(lab_user_id)})
 
-    target_token = user.get('deviceToken')
+    if not caller or not receiver:
+        return jsonify({'success': False, 'message': 'Invalid user or lab'}), 404
+
+    # If user is calling lab, send to lab deviceToken. Else, send to user deviceToken.
+    is_user_calling = data.get('callerType') == 'user'
+    target_token = receiver.get('deviceToken') if is_user_calling else caller.get('deviceToken')
+
+    if not target_token:
+        return jsonify({'success': False, 'message': 'Receiver device token not found'}), 500
+
     messaging.send(messaging.Message(
         notification=messaging.Notification(
             title='Incoming Audio Call',
-            body='Lab is calling you.',
+            body='You have an incoming call.',
         ),
         data={
             'token': token,
             'channelName': channel_name,
-            'type': 'audio'  # frontend uses this to decide layout
+            'type': 'audio',
         },
         token=target_token,
     ))
 
-    return jsonify({'success': True, 'token': token})
-
+    return jsonify({'success': True, 'token': token}), 200
 
 
 
@@ -1338,4 +1388,4 @@ if __name__ == '__main__':
         print("[INFO] Starting scheduler...")
 
     print("[INFO] Starting Flask app...")
-    app.run(host='192.168.1.6', port=5000, debug=True)
+    app.run(host='192.168.1.3', port=5000, debug=True)

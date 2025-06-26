@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:e_clinical/screens/video_call_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -8,29 +7,15 @@ import './screens/splash_screen.dart';
 import './screens/sign_in_screen.dart';
 import './screens/scan_photo_page.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
-import 'package:http/http.dart' as http; // make sure you have this
+import 'package:http/http.dart' as http;
+import 'package:firebase_analytics/firebase_analytics.dart';
+import './screens/audio_call_screen.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-
-  FirebaseMessaging.onMessage.listen((message) {
-    if (message.notification?.title == 'Incoming Video Call') {
-      final token = message.data['token'];
-      final channelName = message.data['channelName'];
-      Navigator.of(navigatorKey.currentContext!).push(
-        MaterialPageRoute(
-          builder: (_) => VideoCallScreen(
-            channel: channelName,
-            isCaller: false, // the callee
-            token: token,
-          ),
-        ),
-      );
-    }
-  });
 
   runApp(const MyApp());
 }
@@ -49,83 +34,91 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+    _initializeFirebase();
+  }
+
+  Future<void> _initializeFirebase() async {
     _messaging = FirebaseMessaging.instance;
     _engine = createAgoraRtcEngine();
-    _engine.initialize(
-      RtcEngineContext(appId: 'dff72470ec104f92aa6cc17e36337822'),
+    await _engine.initialize(
+      const RtcEngineContext(appId: 'dff72470ec104f92aa6cc17e36337822'),
     );
-    // ask permissions (iOS/macOS)
-    _messaging.requestPermission();
+    await _messaging.requestPermission();
 
-    // foreground
-    FirebaseMessaging.onMessage.listen(_handleIncomingCall);
-    // if app was backgrounded & opened via tap
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleIncomingCall);
-    // if app was terminated
-    _messaging.getInitialMessage().then((msg) {
-      if (msg != null) _handleIncomingCall(msg);
+    FirebaseMessaging.onMessage.listen(_handleCallMessage);
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleCallMessage);
 
-      FirebaseMessaging.onMessage.listen((message) {
-        final t = message.notification?.title;
-        if (t == 'CallRejected') {
-          // tear down Agora
-          _engine.leaveChannel();
-          _engine.release();
-          // pop the call screen if it’s open
-          Navigator.of(
-            navigatorKey.currentContext!,
-          ).pop(); // dismiss call screen
+    final initialMsg = await _messaging.getInitialMessage();
+    if (initialMsg != null) _handleCallMessage(initialMsg);
 
-          // Show a dialog or modal
-          showDialog(
-            context: navigatorKey.currentContext!,
-            barrierDismissible: false,
-            builder: (_) => AlertDialog(
-              title: Text('Call Rejected'),
-              content: Text('The patient rejected your call.'),
-            ),
-          );
+    FirebaseMessaging.onMessage.listen((message) {
+      if (message.notification?.title == 'CallRejected') {
+        _engine.leaveChannel();
+        _engine.release();
+        Navigator.of(navigatorKey.currentContext!).pop();
 
-          // Auto-dismiss after 10 sec
-          Future.delayed(Duration(seconds: 10), () {
-            Navigator.of(navigatorKey.currentContext!).pop(); // dismiss alert
-          });
-        }
-      });
+        showDialog(
+          context: navigatorKey.currentContext!,
+          barrierDismissible: false,
+          builder: (_) => const AlertDialog(
+            title: Text('Call Rejected'),
+            content: Text('The patient rejected your call.'),
+          ),
+        );
+
+        Future.delayed(const Duration(seconds: 10), () {
+          Navigator.of(navigatorKey.currentContext!).pop();
+        });
+      }
     });
   }
 
-  void _handleIncomingCall(RemoteMessage message) {
+  void _handleCallMessage(RemoteMessage message) {
+    final type = message.data['type'];
     final channelName = message.data['channelName'];
     final token = message.data['token'];
+
     if (channelName == null || token == null) return;
 
+    if (type == 'audio') {
+      Navigator.of(navigatorKey.currentContext!).push(
+        MaterialPageRoute(
+          builder: (_) => AudioCallScreen(
+            channel: channelName,
+            isCaller: false,
+            token: token,
+          ),
+        ),
+      );
+    } else if (type == 'video' ||
+        message.notification?.title == 'Incoming Video Call') {
+      _showVideoCallDialog(channelName, token);
+    }
+  }
+
+  void _showVideoCallDialog(String channelName, String token) {
     showDialog(
-      context: context,
+      context: navigatorKey.currentContext!,
       barrierDismissible: false,
       builder: (_) => AlertDialog(
         title: const Text('Incoming Video Call'),
-        content: const Text('Dr. is calling you now.'),
+        content: const Text('Doctor is calling you now.'),
         actions: [
           TextButton(
-            // ← make this callback async
             onPressed: () async {
-              // 1) tell your backend the call was rejected
               await http.post(
-                Uri.parse('http://192.168.1.6:5000/api/reject-call'),
+                Uri.parse('http://192.168.1.3:5000/api/reject-call'),
                 headers: {'Content-Type': 'application/json'},
                 body: jsonEncode({'channelName': channelName}),
               );
-
-              // 2) then dismiss the dialog
-              Navigator.of(context).pop();
+              Navigator.of(navigatorKey.currentContext!).pop();
             },
             child: const Text('Reject'),
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).push(
+              Navigator.of(navigatorKey.currentContext!).pop();
+              Navigator.of(navigatorKey.currentContext!).push(
                 MaterialPageRoute(
                   builder: (_) => VideoCallScreen(
                     channel: channelName,

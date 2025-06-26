@@ -1,38 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
-import './chat_screen.dart';
-import './audio_call_screen.dart';
+import 'chat_screen.dart'; // Use the reusable ChatScreen here
 
-class BookingRequestsPage extends StatefulWidget {
-  final String labId;
-  const BookingRequestsPage({super.key, required this.labId});
+class UserBookedTestsPage extends StatefulWidget {
+  final String userId;
+  const UserBookedTestsPage({super.key, required this.userId});
 
   @override
-  State<BookingRequestsPage> createState() => _BookingRequestsPageState();
+  State<UserBookedTestsPage> createState() => _UserBookedTestsPageState();
 }
 
-class _BookingRequestsPageState extends State<BookingRequestsPage> {
-  List bookings = [];
+class _UserBookedTestsPageState extends State<UserBookedTestsPage> {
+  List tests = [];
   bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    fetchBookings();
+    fetchBookedTests();
   }
 
-  void fetchBookings() async {
+  void fetchBookedTests() async {
     final uri = Uri.parse(
-      "http://192.168.1.3:5000/api/lab/bookings/${widget.labId}",
+      "http://192.168.1.3:5000/api/user/booked-tests/${widget.userId}",
     );
     try {
       final res = await http.get(uri);
       if (res.statusCode == 200) {
         final jsonRes = jsonDecode(res.body);
         setState(() {
-          bookings = jsonRes['bookings'];
+          tests = jsonRes['tests'];
           isLoading = false;
         });
       } else {
@@ -40,17 +38,18 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
         setState(() => isLoading = false);
       }
     } catch (e) {
-      print("Failed to fetch bookings: $e");
+      print("Failed to fetch tests: $e");
       setState(() => isLoading = false);
     }
   }
 
-  void startChat(String userId) async {
+  void startChat(String labUserId) async {
+    // Reuse the lab API to ensure chat channel exists
     final uri = Uri.parse("http://192.168.1.3:5000/api/lab/chat/start");
     final res = await http.post(
       uri,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'labUserId': widget.labId, 'userId': userId}),
+      body: jsonEncode({'labUserId': labUserId, 'userId': widget.userId}),
     );
 
     if (res.statusCode == 200) {
@@ -61,7 +60,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
         context,
         MaterialPageRoute(
           builder: (_) =>
-              ChatScreen(channel: channel, currentUser: {"_id": widget.labId}),
+              ChatScreen(channel: channel, currentUser: {"_id": widget.userId}),
         ),
       );
     } else {
@@ -69,56 +68,23 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
     }
   }
 
-  void startCall(String userId, String bookingId) async {
+  void startCall(String labUserId, String bookingId) async {
     final uri = Uri.parse("http://192.168.1.3:5000/api/start-audio-call");
     final res = await http.post(
       uri,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'channelName': bookingId,
-        'userId': userId,
-        'labUserId': widget.labId,
-        'callerType': 'lab',
+        'userId': widget.userId,
+        'labUserId': labUserId,
+        'callerType': 'user',
       }),
     );
 
     if (res.statusCode == 200) {
-      final json = jsonDecode(res.body);
-      final token = json['token'];
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) =>
-              AudioCallScreen(channel: bookingId, token: token, isCaller: true),
-        ),
-      );
+      print("Call started successfully");
     } else {
       print("Call failed: ${res.body}");
-    }
-  }
-
-  void showMap(String locationString) async {
-    try {
-      final parts = locationString.split(',');
-      final lat = double.parse(parts[0].trim());
-      final lng = double.parse(parts[1].trim());
-
-      final url =
-          'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving';
-
-      final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Could not open Google Maps")),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Invalid location data")));
     }
   }
 
@@ -126,21 +92,19 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Booking Requests"),
+        title: const Text("My Booked Tests"),
         backgroundColor: Colors.teal,
         foregroundColor: Colors.white,
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : bookings.isEmpty
-          ? const Center(child: Text("No bookings yet."))
+          : tests.isEmpty
+          ? const Center(child: Text("No tests booked yet."))
           : ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: bookings.length,
+              itemCount: tests.length,
               itemBuilder: (context, index) {
-                final booking = bookings[index];
-                final locationStr = booking['location'];
-
+                final test = tests[index];
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
                   shape: RoundedRectangleBorder(
@@ -155,10 +119,10 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("Test: ${booking['testName']}"),
-                              Text("User: ${booking['userName']}"),
-                              Text("Sample Location: $locationStr"),
-                              Text("Price: Rs. ${booking['price']}"),
+                              Text("Test: ${test['testName']}"),
+                              Text("Lab: ${test['labName']}"),
+                              Text("Location: ${test['location']}"),
+                              Text("Price: Rs. ${test['price']}"),
                             ],
                           ),
                         ),
@@ -167,20 +131,14 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
                           children: [
                             IconButton(
                               icon: const Icon(Icons.chat, color: Colors.teal),
-                              onPressed: () => startChat(booking['userId']),
+                              onPressed: () => startChat(test['labUserId']),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
                             ),
                             IconButton(
                               icon: const Icon(Icons.call, color: Colors.teal),
                               onPressed: () =>
-                                  startCall(booking['userId'], booking['_id']),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.map, color: Colors.teal),
-                              onPressed: () => showMap(locationStr),
+                                  startCall(test['labUserId'], test['_id']),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
                             ),

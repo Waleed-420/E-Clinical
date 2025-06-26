@@ -220,7 +220,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
               await _engine!.release();
               Navigator.pop(context);
               final res = http.post(
-                Uri.parse('http://192.168.1.6:5000/api/end-call'),
+                Uri.parse('http://192.168.1.3:5000/api/end-call'),
                 headers: {'Content-Type': 'application/json'},
                 body: jsonEncode({'channelName': widget.channel}),
               );

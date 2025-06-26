@@ -1,14 +1,14 @@
 import 'package:e_clinical/screens/BookTestSplashScreen.dart';
-
+import './user_booked_test.dart';
 import 'scan_photo_page.dart';
 import 'user_prescription_screen.dart';
 import 'package:flutter/material.dart';
 import 'book_appointment_splashscreen.dart';
 import 'user_reports.dart';
 import 'user_appointments.dart';
-import 'user_settings.dart';
 import 'upload_pdf_screen.dart';
 import 'past_reports_screen.dart';
+import 'user_settings.dart';
 
 class UserHomePage extends StatelessWidget {
   final Map<String, dynamic> user;
@@ -81,10 +81,13 @@ class UserHomePage extends StatelessWidget {
                             ),
                             _buildQuickAction(
                               context,
-                              Icons.settings,
-                              'Settings',
-                              Colors.orange,
-                              () => _navigateTo(context, const UserSettings()),
+                              Icons.biotech,
+                              'Tests',
+                              Colors.teal,
+                              () => _navigateTo(
+                                context,
+                                UserBookedTestsPage(userId: user['_id']),
+                              ),
                             ),
                           ],
                         ),
@@ -137,8 +140,10 @@ class UserHomePage extends StatelessWidget {
                       Icons.description,
                       'Prescription',
                       Colors.green,
-                      () =>
-                          _navigateTo(context, UserPrescriptionScreen(userId: user['_id'])),
+                      () => _navigateTo(
+                        context,
+                        UserPrescriptionScreen(userId: user['_id']),
+                      ),
                     ),
                   ],
                 ),

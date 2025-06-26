@@ -25,7 +25,7 @@ class _BookTestScreenState extends State<BookTestScreen> {
   }
 
   void fetchTests() async {
-    final url = Uri.parse('http://192.168.1.6:5000/api/lab/tests');
+    final url = Uri.parse('http://192.168.1.3:5000/api/lab/tests');
     try {
       final res = await http.get(url);
       if (res.statusCode == 200) {
@@ -74,7 +74,7 @@ class _BookTestScreenState extends State<BookTestScreen> {
     };
 
     final res = await http.post(
-      Uri.parse('http://192.168.1.6:5000/api/book-test'),
+      Uri.parse('http://192.168.1.3:5000/api/book-test'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(bookingData),
     );
