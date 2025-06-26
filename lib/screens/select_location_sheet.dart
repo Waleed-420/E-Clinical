@@ -1,40 +1,34 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
 import 'package:http/http.dart' as http;
 
-class SelectLocationSheet extends StatefulWidget {
-  final String userId;
-  final String labUserId;
-  final String testId;
-
-  const SelectLocationSheet({
-    super.key,
-    required this.userId,
-    required this.labUserId,
-    required this.testId,
-  });
+class LocationPickerScreen extends StatefulWidget {
+  const LocationPickerScreen({super.key});
 
   @override
-  State<SelectLocationSheet> createState() => _SelectLocationSheetState();
+  State<LocationPickerScreen> createState() => _LocationPickerScreenState();
 }
 
-class _SelectLocationSheetState extends State<SelectLocationSheet> {
-  LatLng? selectedLocation;
-  String? address;
-  late GoogleMapController mapController;
+class _LocationPickerScreenState extends State<LocationPickerScreen> {
+  LatLng selectedLocation = LatLng(24.8607, 67.0011); // Default to Karachi
+  late final MapController mapController;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _getCurrentLocation();
+    mapController = MapController();
   }
 
-  void _getCurrentLocation() async {
+  Future<void> goToCurrentLocation() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Location services are disabled.")),
+      );
       return;
     }
 
@@ -42,126 +36,130 @@ class _SelectLocationSheetState extends State<SelectLocationSheet> {
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
       permission = await Geolocator.requestPermission();
-      if (permission != LocationPermission.always &&
-          permission != LocationPermission.whileInUse) {
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Location permission denied.")),
+        );
         return;
       }
     }
 
-    Position pos = await Geolocator.getCurrentPosition();
-    LatLng current = LatLng(pos.latitude, pos.longitude);
-    mapController.animateCamera(CameraUpdate.newLatLngZoom(current, 15));
-    _updateLocation(current);
-  }
+    final position = await Geolocator.getCurrentPosition();
+    final currentLatLng = LatLng(position.latitude, position.longitude);
 
-  void _updateLocation(LatLng pos) async {
     setState(() {
-      selectedLocation = pos;
+      selectedLocation = currentLatLng;
     });
 
-    try {
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        pos.latitude,
-        pos.longitude,
-      );
-      if (placemarks.isNotEmpty) {
-        Placemark p = placemarks.first;
-        setState(() {
-          address = '${p.street}, ${p.locality}, ${p.country}';
-        });
-      }
-    } catch (e) {
-      print("Reverse geocoding failed: $e");
-    }
+    mapController.move(currentLatLng, 15.0);
   }
 
-  void _confirmBooking() async {
-    if (selectedLocation == null) return;
-
-    final body = {
-      'userId': widget.userId,
-      'labUserId': widget.labUserId,
-      'testId': widget.testId,
-      'location': {
-        'lat': selectedLocation!.latitude,
-        'lng': selectedLocation!.longitude,
-        'address': address ?? '',
-      },
-    };
-
-    final response = await http.post(
-      Uri.parse('http://192.168.18.130:5000/api/book-test'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(body),
+  Future<void> searchLocation(String query) async {
+    final url = Uri.parse(
+      'https://nominatim.openstreetmap.org/search?q=$query&format=json&limit=1',
     );
 
-    if (response.statusCode == 201) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Test booked successfully')));
-    } else {
-      final error = jsonDecode(response.body);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: ${error['message']}')));
+    final response = await http.get(url, headers: {'User-Agent': 'FlutterApp'});
+
+    if (response.statusCode == 200) {
+      final results = jsonDecode(response.body);
+      if (results.isNotEmpty) {
+        final lat = double.parse(results[0]['lat']);
+        final lon = double.parse(results[0]['lon']);
+        final found = LatLng(lat, lon);
+
+        setState(() {
+          selectedLocation = found;
+        });
+
+        mapController.move(found, 15.0);
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Location not found.")));
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 500,
-      child: Column(
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Select Location"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.my_location),
+            onPressed: goToCurrentLocation,
+          ),
+        ],
+      ),
+      body: Stack(
         children: [
-          const SizedBox(height: 10),
-          const Text(
-            "Select Sample Collection Location",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-          const SizedBox(height: 10),
-          Expanded(
-            child: GoogleMap(
-              initialCameraPosition: const CameraPosition(
-                target: LatLng(33.6844, 73.0479), // default: Islamabad
-                zoom: 12,
-              ),
-              onMapCreated: (controller) => mapController = controller,
-              onTap: _updateLocation,
-              markers: selectedLocation != null
-                  ? {
-                      Marker(
-                        markerId: const MarkerId('selected'),
-                        position: selectedLocation!,
-                      ),
-                    }
-                  : {},
-              myLocationEnabled: true,
-              myLocationButtonEnabled: false,
+          FlutterMap(
+            mapController: mapController,
+            options: MapOptions(
+              center: selectedLocation,
+              zoom: 13.0,
+              onTap: (_, point) {
+                setState(() {
+                  selectedLocation = point;
+                });
+              },
             ),
-          ),
-          if (address != null)
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text("Selected Address: $address"),
-            ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              ElevatedButton.icon(
-                icon: const Icon(Icons.my_location),
-                label: const Text("Use Current"),
-                onPressed: _getCurrentLocation,
+              TileLayer(
+                urlTemplate:
+                    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                subdomains: const ['a', 'b', 'c'],
               ),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.check),
-                label: const Text("Confirm"),
-                onPressed: _confirmBooking,
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: selectedLocation,
+                    width: 80,
+                    height: 80,
+                    child: const Icon(
+                      Icons.location_on,
+                      size: 40,
+                      color: Colors.red,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          Positioned(
+            top: 12,
+            left: 12,
+            right: 12,
+            child: Card(
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search),
+                  hintText: 'Search location...',
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.send),
+                    onPressed: () {
+                      searchLocation(_searchController.text.trim());
+                    },
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                ),
+                onSubmitted: (value) => searchLocation(value.trim()),
+              ),
+            ),
+          ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.pop(context, selectedLocation);
+        },
+        label: const Text("Confirm"),
+        icon: const Icon(Icons.check),
       ),
     );
   }
