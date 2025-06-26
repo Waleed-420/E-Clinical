@@ -96,10 +96,13 @@ class _UserAppointmentsState extends State<UserAppointments> {
       body: jsonEncode({'channelName': appointment['_id']}),
     );
     final data = jsonDecode(res.body);
-    // console dta value
     print(data);
+
     if (!mounted) return;
+
     if (data['success'] == true) {
+      final uid = data['uid'] ?? 0;
+
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -107,6 +110,7 @@ class _UserAppointmentsState extends State<UserAppointments> {
             channel: appointment['_id'],
             isCaller: true,
             token: data['token'],
+            uid: uid,
           ),
         ),
       );

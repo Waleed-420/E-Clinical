@@ -873,14 +873,12 @@ def start_call():
 
     print(token)
 
-    # find appointment through channel name
     appointment = mongo.db.appointments.find_one({'_id': ObjectId(channel_name)})
     if not appointment:
         return jsonify({'success': False, 'message': 'Appointment not found'}), 404
 
     user = mongo.db.users.find_one({'_id': ObjectId(appointment['userId'])})
     
-    # Send push notification to user
     target_token = user.get('deviceToken')
     messaging.send(messaging.Message(
         notification=messaging.Notification(
@@ -890,11 +888,12 @@ def start_call():
         data={
             'token': token,
             'channelName': channel_name,
+            'uid': str(uid)
         },
         token=target_token,
     ))
 
-    return jsonify({'success': True, 'token': token})
+    return jsonify({'success': True, 'token': token, 'uid': uid})
 
 @app.route('/api/chat/channel/<channel>', methods=['GET', 'POST'])
 def handle_chat_channel(channel):

@@ -11,12 +11,14 @@ class VideoCallScreen extends StatefulWidget {
   final String? channel;
   final bool isCaller;
   final String token;
+  final int uid;
 
   const VideoCallScreen({
     super.key,
     this.channel,
     required this.isCaller,
     required this.token,
+    required this.uid,
   });
 
   @override
@@ -28,7 +30,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   bool _localUserJoined = false;
   RtcEngine? _engine;
   bool _agoraReady = false;
-
   bool _isLocalBig = false;
 
   @override
@@ -38,7 +39,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   }
 
   Future<void> initAgora() async {
-    // Utility to show messages
     void showSnack(String msg) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -47,45 +47,39 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       }
     }
 
-    debugPrint("🔧 Requesting permissions...");
-    await [Permission.camera, Permission.microphone].request();
-    debugPrint("✅ Permissions requested.");
-    showSnack("Permissions granted");
+    final camStatus = await Permission.camera.request();
+    final micStatus = await Permission.microphone.request();
 
-    debugPrint("🔧 Creating Agora engine...");
+    if (!camStatus.isGranted || !micStatus.isGranted) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Camera or microphone permission denied"),
+          ),
+        );
+      }
+      return;
+    }
+
     _engine = createAgoraRtcEngine();
     await _engine!.initialize(RtcEngineContext(appId: appId));
-    debugPrint("✅ Agora engine initialized.");
-    showSnack("Agora engine initialized");
 
-    debugPrint("🔧 Registering event handlers...");
     _engine!.registerEventHandler(
       RtcEngineEventHandler(
         onJoinChannelSuccess: (RtcConnection conn, int elapsed) {
-          debugPrint(
-            "🎉 onJoinChannelSuccess: channel=${conn.channelId}, uid=${conn.localUid}",
-          );
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text("Joined channel: ${conn.channelId}")),
-            );
-          }
           setState(() {
             _agoraReady = true;
             _localUserJoined = true;
           });
         },
         onUserJoined: (RtcConnection conn, int uid, int elapsed) {
-          debugPrint("👤 onUserJoined: uid=$uid");
-          showSnack("Remote user joined: $uid");
+          debugPrint("🔵 Remote user joined with UID: $uid");
           setState(() {
             _remoteUid = uid;
           });
         },
         onUserOffline:
             (RtcConnection conn, int uid, UserOfflineReasonType reason) {
-              debugPrint("👋 onUserOffline: uid=$uid, reason=$reason");
-              showSnack("User left: $uid");
               setState(() {
                 _remoteUid = null;
               });
@@ -96,29 +90,22 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         },
       ),
     );
-    debugPrint("✅ Event handlers registered.");
-    showSnack("Event handlers registered");
 
-    debugPrint("🎥 Enabling video...");
     await _engine!.enableVideo();
     await _engine!.startPreview();
-    debugPrint("✅ Video enabled and preview started.");
-    showSnack("Video preview started");
-
-    debugPrint("👤 Setting client role to broadcaster...");
     await _engine!.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
-    debugPrint("✅ Client role set.");
-    showSnack("Client role: Broadcaster");
 
-    debugPrint("🚀 Joining channel: ${widget.channel}, token: ${widget.token}");
     await _engine!.joinChannel(
       token: widget.token,
       channelId: widget.channel!,
-      uid: 0,
-      options: ChannelMediaOptions(),
+      uid: widget.uid,
+      options: ChannelMediaOptions(
+        clientRoleType: ClientRoleType.clientRoleBroadcaster,
+        channelProfile: ChannelProfileType.channelProfileCommunication,
+        publishCameraTrack: true,
+        publishMicrophoneTrack: true,
+      ),
     );
-    debugPrint("✅ joinChannel() called.");
-    showSnack("Joining channel...");
   }
 
   @override
@@ -144,23 +131,35 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   }
 
   Widget _videoView({required bool isLocal}) {
-    return AgoraVideoView(
-      controller: isLocal
-          ? VideoViewController(
-              rtcEngine: _engine!,
-              canvas: const VideoCanvas(uid: 0),
-            )
-          : VideoViewController.remote(
-              rtcEngine: _engine!,
-              canvas: VideoCanvas(uid: _remoteUid),
-              connection: RtcConnection(channelId: widget.channel!),
-            ),
-    );
+    if (isLocal) {
+      return AgoraVideoView(
+        controller: VideoViewController(
+          rtcEngine: _engine!,
+          canvas: VideoCanvas(uid: widget.uid),
+        ),
+      );
+    } else {
+      if (_remoteUid == null || _remoteUid == 0) {
+        return const Center(
+          child: Text(
+            'Waiting for user to join...',
+            style: TextStyle(color: Colors.white),
+          ),
+        );
+      }
+
+      return AgoraVideoView(
+        controller: VideoViewController.remote(
+          rtcEngine: _engine!,
+          canvas: VideoCanvas(uid: _remoteUid),
+          connection: RtcConnection(channelId: widget.channel!),
+        ),
+      );
+    }
   }
 
   Widget _buildVideoLayout() {
-    final hasRemote = _remoteUid != null;
-
+    final hasRemote = _remoteUid != null && _remoteUid != 0;
     Widget bigView = _videoView(isLocal: _isLocalBig || !hasRemote);
     Widget smallView = _videoView(isLocal: !_isLocalBig && hasRemote);
 
@@ -219,7 +218,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
               await _engine!.leaveChannel();
               await _engine!.release();
               Navigator.pop(context);
-              final res = http.post(
+              http.post(
                 Uri.parse('http://192.168.1.3:5000/api/end-call'),
                 headers: {'Content-Type': 'application/json'},
                 body: jsonEncode({'channelName': widget.channel}),
@@ -234,17 +233,13 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ignore: deprecated_member_use
     return WillPopScope(
-      onWillPop: () async {
-        // return false to disable popping
-        return false;
-      },
+      onWillPop: () async => false,
       child: Scaffold(
         backgroundColor: Colors.black,
         body: _agoraReady
             ? _buildVideoLayout()
-            : Center(child: CircularProgressIndicator()),
+            : const Center(child: CircularProgressIndicator()),
       ),
     );
   }

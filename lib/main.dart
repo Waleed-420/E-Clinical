@@ -8,7 +8,6 @@ import './screens/sign_in_screen.dart';
 import './screens/scan_photo_page.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:http/http.dart' as http;
-import 'package:firebase_analytics/firebase_analytics.dart';
 import './screens/audio_call_screen.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -16,13 +15,11 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-
   runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
-
   @override
   State<MyApp> createState() => _MyAppState();
 }
@@ -77,8 +74,11 @@ class _MyAppState extends State<MyApp> {
     final type = message.data['type'];
     final channelName = message.data['channelName'];
     final token = message.data['token'];
+    final uidStr = message.data['uid'];
 
-    if (channelName == null || token == null) return;
+    if (channelName == null || token == null || uidStr == null) return;
+
+    final uid = int.tryParse(uidStr) ?? 0;
 
     if (type == 'audio') {
       Navigator.of(navigatorKey.currentContext!).push(
@@ -92,11 +92,11 @@ class _MyAppState extends State<MyApp> {
       );
     } else if (type == 'video' ||
         message.notification?.title == 'Incoming Video Call') {
-      _showVideoCallDialog(channelName, token);
+      _showVideoCallDialog(channelName, token, uid);
     }
   }
 
-  void _showVideoCallDialog(String channelName, String token) {
+  void _showVideoCallDialog(String channelName, String token, int uid) {
     showDialog(
       context: navigatorKey.currentContext!,
       barrierDismissible: false,
@@ -124,6 +124,7 @@ class _MyAppState extends State<MyApp> {
                     channel: channelName,
                     isCaller: false,
                     token: token,
+                    uid: uid,
                   ),
                 ),
               );
