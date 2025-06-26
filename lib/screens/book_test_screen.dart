@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
+import 'select_location_sheet.dart';
 
 class BookTestScreen extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -56,77 +58,45 @@ class _BookTestScreenState extends State<BookTestScreen> {
     });
   }
 
-  void bookTest(Map test) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) {
-        final locationController = TextEditingController();
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                "Sample Collection Location",
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: locationController,
-                decoration: const InputDecoration(
-                  hintText: "Enter location (e.g. Home address)",
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                child: const Text("Confirm Booking"),
-                onPressed: () async {
-                  final location = locationController.text.trim();
-                  if (location.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Please enter location")),
-                    );
-                    return;
-                  }
-
-                  final bookingData = {
-                    'userId': widget.user['_id'],
-                    'labUserId': test['labUserId'],
-                    'testId': test['_id'],
-                    'location': location,
-                  };
-
-                  final res = await http.post(
-                    Uri.parse('http://192.168.1.6:5000/api/book-test'),
-                    headers: {'Content-Type': 'application/json'},
-                    body: jsonEncode(bookingData),
-                  );
-
-                  if (res.statusCode == 201) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Test booked successfully")),
-                    );
-                  } else {
-                    final err = jsonDecode(res.body);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Error: ${err['message']}")),
-                    );
-                  }
-                },
-              ),
-            ],
-          ),
-        );
-      },
+  void bookTest(Map test) async {
+    LatLng? selectedLocation = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const LocationPickerScreen()),
     );
+
+    if (selectedLocation == null) return;
+
+    final bookingData = {
+      'userId': widget.user['_id'],
+      'labUserId': test['labUserId'],
+      'testId': test['_id'],
+      'location': '${selectedLocation.latitude},${selectedLocation.longitude}',
+    };
+
+    final res = await http.post(
+      Uri.parse('http://192.168.1.6:5000/api/book-test'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(bookingData),
+    );
+
+    if (res.statusCode == 201) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Test booked successfully")));
+    } else {
+      String errorMsg = 'Something went wrong';
+      try {
+        final err = jsonDecode(res.body);
+        if (err is Map && err['message'] != null) {
+          errorMsg = err['message'];
+        }
+      } catch (_) {
+        errorMsg = 'Unexpected error';
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $errorMsg")));
+    }
   }
 
   @override

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import './booking_requests_page.dart';
 
 class LaboratoryHomePage extends StatefulWidget {
   final Map user;
@@ -27,7 +28,7 @@ class _LaboratoryHomePageState extends State<LaboratoryHomePage> {
 
   void fetchTests() async {
     final uri = Uri.parse(
-      'http://192.168.18.130:5000/api/lab/tests/${widget.user['_id']}',
+      'http://192.168.1.6:5000/api/lab/tests/${widget.user['_id']}',
     );
     try {
       final res = await http.get(uri);
@@ -155,7 +156,15 @@ class _LaboratoryHomePageState extends State<LaboratoryHomePage> {
                   icon: Icons.calendar_month,
                   label: "Booking Requests",
                   color: Colors.green,
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            BookingRequestsPage(labId: user['_id']),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),

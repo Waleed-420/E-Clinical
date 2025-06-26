@@ -1201,31 +1201,135 @@ def get_all_tests():
 @app.route('/api/book-test', methods=['POST'])
 def book_test():
     try:
-        data = request.get_json()
-        required = ['userId', 'labUserId', 'testId', 'location']
-        missing = [f for f in required if f not in data or not data[f]]
-        if missing:
-            return jsonify({'success': False, 'message': f'Missing: {missing}'}), 400
+        data = request.get_json(force=True)
+        print("🔵 Raw received data:", data)
 
-        loc = data['location']
+        if not isinstance(data, dict):
+            return jsonify({'success': False, 'message': 'Invalid data format'}), 400
+
+        required_fields = ['userId', 'labUserId', 'testId', 'location']
+        missing_fields = [f for f in required_fields if f not in data or not data[f]]
+        if missing_fields:
+            return jsonify({'success': False, 'message': f'Missing fields: {missing_fields}'}), 400
+
+        location_str = data['location']
+        try:
+            lat_str, lng_str = location_str.split(',')
+            latitude = float(lat_str.strip())
+            longitude = float(lng_str.strip())
+        except Exception as e:
+            print("❌ Location parse error:", e)
+            return jsonify({'success': False, 'message': 'Invalid location format'}), 400
+
         booking = {
             'userId': data['userId'],
             'labUserId': data['labUserId'],
             'testId': data['testId'],
             'location': {
-                'lat': loc['lat'],
-                'lng': loc['lng'],
-                'address': loc.get('address', '')
+                'lat': latitude,
+                'lng': longitude
             },
-            'status': 'pending',
-            'bookedAt': datetime.utcnow()
+            'bookedAt': datetime.utcnow() 
         }
 
-        mongo.db.test_bookings.insert_one(booking)
-        return jsonify({'success': True, 'message': 'Test booked'}), 201
+        print("✅ Final booking object:", booking)
+
+        # ✅ Use correct collection
+        mongo.db.bookings.insert_one(booking)
+
+        return jsonify({'success': True, 'message': 'Test booked successfully'}), 201
 
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
+        print("❌ Booking failed:")
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': 'Server error'}), 500
+
+
+@app.route('/api/lab/bookings/<lab_id>', methods=['GET'])
+def get_lab_bookings(lab_id):
+    try:
+        bookings = list(mongo.db.bookings.find({'labUserId': lab_id}))
+
+        enriched_bookings = []
+        for booking in bookings:
+            # Fetch user details
+            user = mongo.db.users.find_one({'_id': ObjectId(booking['userId'])})
+            # Fetch test details
+            test = mongo.db.lab_tests.find_one({'_id': ObjectId(booking['testId'])})
+
+            enriched_bookings.append({
+                '_id': str(booking['_id']),
+                'userId': str(booking['userId']),
+                'testId': str(booking['testId']),
+                'userName': user['name'] if user else 'Unknown User',
+                'testName': test['testName'] if test else 'Unknown Test',
+                'price': test['price'] if test else 'N/A',
+                'location': f"{booking['location']['lat']}, {booking['location']['lng']}"
+            })
+
+        return jsonify({'success': True, 'bookings': enriched_bookings}), 200
+
+    except Exception as e:
+        print(f"❌ Error fetching lab bookings: {e}")
+        return jsonify({'success': False, 'message': 'Server error'}), 500
+
+@app.route('/api/lab/chat/start', methods=['POST'])
+def start_lab_chat():
+    data = request.json
+    lab_user_id = data.get('labUserId')
+    user_id = data.get('userId')
+
+    if not lab_user_id or not user_id:
+        return jsonify({'success': False, 'message': 'Missing labUserId or userId'}), 400
+
+    # Create deterministic channel ID (labId_userId)
+    channel = f"{lab_user_id}_{user_id}"
+
+    chat = mongo.db.chats.find_one({'channel': channel})
+    if not chat:
+        new_chat = {
+            'channel': channel,
+            'messages': [],
+            'created_at': datetime.now(pkt),
+            'updated_at': datetime.now(pkt)
+        }
+        mongo.db.chats.insert_one(new_chat)
+
+    return jsonify({'success': True, 'channel': channel}), 200
+
+@app.route('/api/lab/start-audio-call', methods=['POST'])
+def start_audio_call():
+    data = request.get_json()
+    channel_name = data['channelName']
+    uid = 0
+    expire_time = int(time.time()) + 180000
+
+    token = RtcTokenBuilder.buildTokenWithUid(
+        AGORA_APP_ID, AGORA_APP_CERTIFICATE,
+        channel_name, uid, 1, expire_time
+    )
+
+    user = mongo.db.users.find_one({'_id': ObjectId(data['userId'])})
+    if not user:
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+
+    target_token = user.get('deviceToken')
+    messaging.send(messaging.Message(
+        notification=messaging.Notification(
+            title='Incoming Audio Call',
+            body='Lab is calling you.',
+        ),
+        data={
+            'token': token,
+            'channelName': channel_name,
+            'type': 'audio'  # frontend uses this to decide layout
+        },
+        token=target_token,
+    ))
+
+    return jsonify({'success': True, 'token': token})
+
+
 
 
 
