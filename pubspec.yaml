@@ -94,6 +94,7 @@ flutter:
     - assets/images/Brain.png
     - assets/images/Heart.png
     - assets/images/Gynae.png
+    - assets/images/doctor.png
     - assets/images/Tooth.png
     - assets/images/First_aid.png
     - assets/images/Thermometer.png

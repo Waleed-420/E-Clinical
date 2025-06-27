@@ -116,7 +116,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final isDelivered = message['delivered'] ?? false;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       child: Row(
         mainAxisAlignment: isUser
             ? MainAxisAlignment.end
@@ -125,20 +125,39 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           if (!isUser && showAvatar)
             const Padding(
-              padding: EdgeInsets.only(right: 6.0),
-              child: Icon(Icons.person, size: 28, color: Color(0xFF15A196)),
-            ),
-          if (!isUser && !showAvatar) const SizedBox(width: 34),
+              padding: EdgeInsets.only(right: 6),
+              child: CircleAvatar(
+                backgroundColor: Color(0xFF15A196),
+                child: Icon(Icons.person, color: Colors.white, size: 20),
+                radius: 16,
+              ),
+            )
+          else if (!isUser)
+            const SizedBox(width: 38), // Align with avatar space
+
           Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              margin: const EdgeInsets.only(left: 8, right: 8),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
               decoration: BoxDecoration(
                 color: isUser
                     ? const Color(0xFF15A196)
-                    : const Color(0xFFB8E3DF),
-                borderRadius: BorderRadius.circular(16),
+                    : const Color(0xFFE7F8F6),
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(20),
+                  topRight: const Radius.circular(20),
+                  bottomLeft: Radius.circular(isUser ? 20 : 4),
+                  bottomRight: Radius.circular(isUser ? 4 : 20),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: const Offset(2, 2),
+                  ),
+                ],
               ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               child: Column(
                 crossAxisAlignment: isUser
                     ? CrossAxisAlignment.end
@@ -147,24 +166,37 @@ class _ChatScreenState extends State<ChatScreen> {
                   Text(
                     message['content'],
                     style: TextStyle(
-                      fontSize: 15,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
                       color: isUser ? Colors.white : Colors.black87,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        messageTime,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: isUser ? Colors.white70 : Colors.grey[700],
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isUser
+                              ? Colors.white24
+                              : Colors.teal.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          messageTime,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isUser ? Colors.white70 : Colors.teal[800],
+                          ),
                         ),
                       ),
                       if (isUser)
                         Padding(
-                          padding: const EdgeInsets.only(left: 4.0),
+                          padding: const EdgeInsets.only(left: 6),
                           child: Icon(
                             Icons.done_all,
                             size: 16,
@@ -189,9 +221,10 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: const BackButton(),
+        centerTitle: false,
         title: const Text(
-          'Consultation Chat',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          'Chat',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         elevation: 0,
         backgroundColor: Colors.white,
@@ -228,7 +261,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       decoration: InputDecoration(
                         hintText: 'Write a message...',
                         filled: true,
-                        fillColor: Colors.grey[100],
+                        fillColor: Colors.grey[300],
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 20,
                           vertical: 14,

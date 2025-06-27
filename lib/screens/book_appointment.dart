@@ -259,7 +259,13 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
                       child: ListTile(
-                        leading: const CircleAvatar(child: Icon(Icons.person)),
+                        leading: CircleAvatar(
+                          backgroundColor: Colors.transparent,
+                          backgroundImage: AssetImage(
+                            'assets/images/doctor.png',
+                          ),
+                          radius: 24,
+                        ),
                         title: Text(doctor['name'] ?? 'Dr. Unknown'),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,

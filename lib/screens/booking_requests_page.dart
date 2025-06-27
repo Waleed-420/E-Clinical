@@ -129,6 +129,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
         title: const Text("Booking Requests"),
         backgroundColor: Colors.teal,
         foregroundColor: Colors.white,
+        elevation: 2,
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -142,47 +143,105 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
                 final locationStr = booking['location'];
 
                 return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
+                  elevation: 3,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                   ),
+                  margin: const EdgeInsets.only(bottom: 16),
                   child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Row(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text("Test: ${booking['testName']}"),
-                              Text("User: ${booking['userName']}"),
-                              Text("Sample Location: $locationStr"),
-                              Text("Price: Rs. ${booking['price']}"),
-                            ],
+                        Text(
+                          booking['testName'] ?? "Unknown Test",
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.teal,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Column(
+                        const SizedBox(height: 6),
+                        Text(
+                          "User: ${booking['userName'] ?? 'N/A'}",
+                          style: const TextStyle(fontSize: 15),
+                        ),
+                        Text(
+                          "Sample Location: $locationStr",
+                          style: const TextStyle(fontSize: 15),
+                        ),
+                        Text(
+                          "Price: Rs. ${booking['price'] ?? 'N/A'}",
+                          style: const TextStyle(fontSize: 15),
+                        ),
+                        const SizedBox(height: 16),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
                           children: [
-                            IconButton(
-                              icon: const Icon(Icons.chat, color: Colors.teal),
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.teal,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                              ),
+                              icon: const Icon(Icons.chat, color: Colors.white),
+                              label: const Text(
+                                "Open Chat",
+                                style: TextStyle(color: Colors.white),
+                              ),
                               onPressed: () => startChat(booking['userId']),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.call, color: Colors.teal),
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.teal,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                              ),
+                              icon: const Icon(Icons.call, color: Colors.white),
+                              label: const Text(
+                                "Call the Patient",
+                                style: TextStyle(color: Colors.white),
+                              ),
                               onPressed: () =>
                                   startCall(booking['userId'], booking['_id']),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.map, color: Colors.teal),
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.teal,
+                                foregroundColor: Colors.white,
+                                elevation: 2,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                              ),
+                              icon: const Icon(
+                                Icons.location_on_outlined,
+                                size: 20,
+                              ),
+                              label: const Text(
+                                "Start Journey",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
                               onPressed: () => showMap(locationStr),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
                             ),
                           ],
                         ),
